@@ -1,0 +1,19 @@
+REJECTED 10 October 2026 : fill round 2 (thresholds 0.30 to 0.38, amp 0.64) gave EQUIV 0.7788, below 0.7831 without it. Spec kept for the record :
+WP['I11'] = [  # FILL round 2 : sixteen more max-blobs, thresholds 0.30 to 0.38, amp 0.64, to reduce the chip count further. 16 x 4 = 64 nodes. FR : deuxième passe de comblement.
+    ('blob', 'fillb_01', 'inside', 0.030, 2.0, 0.9, 601.3, 0.30, 0.38, 0.64, 12),
+    ('blob', 'fillb_02', 'inside', 0.045, 2.0, 0.9, 603.7, 0.30, 0.38, 0.64, 12),
+    ('blob', 'fillb_03', 'inside', 0.052, 2.0, 0.9, 607.1, 0.30, 0.38, 0.64, 12),
+    ('blob', 'fillb_04', 'inside', 0.038, 2.0, 0.9, 611.9, 0.30, 0.38, 0.64, 12),
+    ('blob', 'fillb_05', 'inside', 0.060, 2.0, 0.9, 613.3, 0.30, 0.38, 0.64, 12),
+    ('blob', 'fillb_06', 'inside', 0.041, 2.0, 0.9, 617.7, 0.30, 0.38, 0.64, 12),
+    ('blob', 'fillb_07', 'inside', 0.056, 2.0, 0.9, 621.1, 0.30, 0.38, 0.64, 12),
+    ('blob', 'fillb_08', 'inside', 0.034, 2.0, 0.9, 623.9, 0.30, 0.38, 0.64, 12),
+    ('blob', 'fillb_09', 'inside', 0.048, 2.0, 0.9, 627.3, 0.30, 0.38, 0.64, 12),
+    ('blob', 'fillb_10', 'inside', 0.063, 2.0, 0.9, 631.1, 0.30, 0.38, 0.64, 12),
+    ('blob', 'fillb_11', 'inside', 0.039, 2.0, 0.9, 633.7, 0.30, 0.38, 0.64, 12),
+    ('blob', 'fillb_12', 'inside', 0.053, 2.0, 0.9, 637.9, 0.30, 0.38, 0.64, 12),
+    ('blob', 'fillb_13', 'inside', 0.044, 2.0, 0.9, 641.3, 0.30, 0.38, 0.64, 12),
+    ('blob', 'fillb_14', 'inside', 0.058, 2.0, 0.9, 643.1, 0.30, 0.38, 0.64, 12),
+    ('blob', 'fillb_15', 'inside', 0.036, 2.0, 0.9, 647.7, 0.30, 0.38, 0.64, 12),
+    ('blob', 'fillb_16', 'inside', 0.050, 2.0, 0.9, 649.1, 0.30, 0.38, 0.64, 12),
+]

@@ -1,0 +1,19 @@
+REJECTED 10 October 2026 : grow (dilation of the chip mask, subtract) lowered EQUIV to 0.18 to 0.61 (cover rises 0.12 to 0.19). Spec kept for the record :
+WP['I10'] = [  # GROW : sixteen dilations of the chip mask (blur, threshold, subtract 0.04), each merges neighbouring chips into larger ones and darkens their rim, as the reference's few large peels. 16 x 4 = 64 nodes. FR : dilater les chips pour en faire moins, plus grands.
+    ('grow', 'grw_01', 'inside', 0.004, 0.02, 0.10, 0.04, 4),
+    ('grow', 'grw_02', 'inside', 0.006, 0.02, 0.10, 0.04, 4),
+    ('grow', 'grw_03', 'inside', 0.008, 0.02, 0.10, 0.04, 4),
+    ('grow', 'grw_04', 'inside', 0.010, 0.02, 0.10, 0.04, 4),
+    ('grow', 'grw_05', 'inside', 0.012, 0.02, 0.10, 0.04, 4),
+    ('grow', 'grw_06', 'inside', 0.014, 0.02, 0.10, 0.04, 4),
+    ('grow', 'grw_07', 'inside', 0.005, 0.02, 0.10, 0.04, 4),
+    ('grow', 'grw_08', 'inside', 0.007, 0.02, 0.10, 0.04, 4),
+    ('grow', 'grw_09', 'inside', 0.009, 0.02, 0.10, 0.04, 4),
+    ('grow', 'grw_10', 'inside', 0.011, 0.02, 0.10, 0.04, 4),
+    ('grow', 'grw_11', 'inside', 0.013, 0.02, 0.10, 0.04, 4),
+    ('grow', 'grw_12', 'inside', 0.004, 0.02, 0.10, 0.04, 4),
+    ('grow', 'grw_13', 'inside', 0.006, 0.02, 0.10, 0.04, 4),
+    ('grow', 'grw_14', 'inside', 0.008, 0.02, 0.10, 0.04, 4),
+    ('grow', 'grw_15', 'inside', 0.010, 0.02, 0.10, 0.04, 4),
+    ('grow', 'grw_16', 'inside', 0.012, 0.02, 0.10, 0.04, 4),
+]
