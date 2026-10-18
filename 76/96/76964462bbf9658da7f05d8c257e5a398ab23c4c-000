@@ -1,0 +1,278 @@
+# Fenêtre : recherche de la méthode qui atteint la height
+
+Mise à jour : 10 October 2026, 20:20 (heure locale). Chaque passe ajoute sa ligne au journal ci-dessous.
+
+## Plan de session : N, 16 méthodes, quatre phases (10 October 2026, 20:20)
+
+Chaque feuille se coche avec sa preuve, jamais avant. Ordre imposé par les dépendances : mesurer N avant les méthodes, puis les masques avant chaque prochaine itération.
+
+| # | Feuille | Preuve attendue | État au 10 October 2026, 20:20 |
+|---|---|---|---|
+| T0 | Prompt consigné dans le FEEDBACK du projet | ligne `prompt` avec son event-id | fait |
+| T1 | Pont et hython vérifiés | `zrhoudini.py status` renvoie `ok` | fait |
+| T2 | N mesuré sur 64, 512, 1024, 2048 et 4096 nodes | [capacity_n.jsonl](/Users/zenray/Create/Build/Productions/ZenRayHoudini/LouisianaBayou/Heights/measures/capacity_n.jsonl), une ligne par essai | en cours |
+| T3 | Masques N et B de la référence et du rendu, couverture par région | `measures/masks_<tag>.json` et sa planche | à faire |
+| T4 | 16 méthodes, phases 1 à 4 de chacune | une planche par phase dans `versions/window/<ID>/`, une ligne au journal | à faire |
+| T5 | Graphe de la méthode retenue optimisé | nodes avant et après, planche identique au pixel | à faire |
+
+Définitions, à faire confirmer par Matthieu :
+
+- **Passe** : un graphe construit d'un coup avec N nodes, rendu une fois, planche une fois.
+- **Phase** : une passe d'une méthode. On teste les phases 1 à 4 de chaque méthode, puis Matthieu tranche.
+- **N** : le plus grand nombre de nodes dont le recalcul reste sous 20 secondes à 1254 px. Au-delà, il faut une méthode plus légère, pas un délai plus long.
+- **Masques N et B** : seuil fixé par la référence seule, appliqué au rendu. Ils choisissent la prochaine itération, jamais une porte de score.
+
+16 méthodes, un mécanisme distinct chacune :
+
+| ID | Méthode | Nodes Copernicus | État | Date |
+|---|---|---|---|---|
+| M01 | Masques d'abord, union par max, une lèvre par cible (M4) | fractalnoise, blend 12, monotosdf, remap | P01 à P08 faites, non atteinte | 10 October 2026 |
+| M02 | Union absolue max ou min par famille (M3b) | fractalnoise, monotosdf, remap, blend 12 et 13 | P02 à P07 faites, non atteinte | 10 October 2026 |
+| M03 | Trois tons normalisés (M3c) | comme M02, niveaux fixes | P08 faite, plateaux, non atteinte | 10 October 2026 |
+| M04 | Champs de distance additifs (M3) | fractalnoise, monotosdf, remap, blend 3 | P01 faite, non atteinte | 10 October 2026 |
+| M05 | Profil mesuré par ligne, modulé par masques en multiplication | remap, courbe, blend 5 | à faire | 10 October 2026 |
+| M06 | Cellules de pelage, une forme par cellule | cellpattern (Cop) | à faire | 10 October 2026 |
+| M07 | Éclats Worley seuillés, distance signée et lèvre | worleynoise (Cop), monotosdf, remap | à faire | 10 October 2026 |
+| M08 | Motifs de Turing pour réseaux de fibres | turingpatterns (Cop) | à faire | 10 October 2026 |
+| M09 | Éclats étirés par streakblur sur bruit seuillé | streakblur, remap | à faire | 10 October 2026 |
+| M10 | Distance Eikonal depuis des germes | eikonal (Cop), remap | à faire | 10 October 2026 |
+| M11 | Bandes de fréquence, grossières puis fines, une phase par bande | fractalnoise, remap | à faire | 10 October 2026 |
+| M12 | Empilement par blend multiply (5) et hypot (8) au lieu de l'addition | blend 5 et 8 | à faire | 10 October 2026 |
+| M13 | Gonflement planaire depuis des masques, échelle ajustée à 1254 px | planarinflate | à faire | 10 October 2026 |
+| M14 | Courbes de ton par quantiles mesurés, région par région (quantiles mesurés, référence hors du graphe) | remap, courbe | à faire | 10 October 2026 |
+| M15 | Formes géométriques SDF puis bruit de surface | sdfshape, monotosdf (sdfblend à vérifier) | à faire | 10 October 2026 |
+| M16 | Lames en tuiles, un profil et un décalage par lame | tilepattern (Cop) | à faire | 10 October 2026 |
+
+Noms Copernicus vérifiés par la recherche du 10 October 2026, 20:15 : `cellpattern`, `cellularnoise`, `worleynoise`, `turingpatterns`, `tilepattern`, `eikonal`, `streakblur`, `planarinflate`, `sdfshape`. Tout autre nom reste à vérifier avant usage.
+
+## Critère d'arrêt (X)
+
+- Une méthode qui, avec un seul prompt (un jeu de paramètres), produit la height de la fenêtre à l'œil, face à [window_height_ref.png](/Users/zenray/Create/Build/Productions/ZenRayHoudini/LouisianaBayou/Heights/refs/window_height_ref.png).
+- Preuve : une planche `panel_<tag>.png` lue à l'œil, avec le verdict « atteinte ».
+- Fin : 11 October 2026 à 08:00 (heure locale), ou X atteinte.
+
+## Règles de passe
+
+- 10 October 2026, 20:20 : CORRECTION des règles 1 et 2 ci-dessous. Une passe porte N nodes, N à mesurer (voir le Plan de session). On teste quatre phases par méthode, puis Matthieu tranche. Les mentions « 64 nodes » et « 32 passes » restent comme historique du journal.
+
+1. Une passe = 64 nodes réels de la méthode en cours, vérifiés par un assert. Une image et une planche par passe.
+2. 32 passes au plus par méthode. Si la height n'est pas atteinte, changer de méthode radicalement, pas une variante de la même.
+3. Aucun score comme porte. La référence se mesure, elle ne se copie jamais dans le graphe.
+4. Une seule hauteur : la fenêtre. Le blanc peint et la tuile sont en pause.
+
+## Méthodes déjà essayées (ne pas refaire)
+
+| Méthode | Ce qui a été fait | Résultat | Pourquoi |
+|---|---|---|---|
+| M0 : additif de 64 nodes sur WindowV2 | I03 à I09b, environ 9 passes de 64 | non atteinte | les gabarits flous ou d'ouverture effacent les détails au lieu de les construire ; bords mous, lames sans biseau |
+| M1 : score comme porte (EQUIV, CompareHeight, Metrics2) | recherche guidée par le score | échec, déprécié | le score monte quand l'œil recule (0,7831 pour des coins durs et des plateaux plats) |
+| M2 : prompt de réflexion itératif | boucle réflexion IA puis Houdini | échec (constat de Matthieu) | la réflexion retouche des valeurs sans changer la structure |
+
+## Diagnostic commun
+
+Tout ce qui est additif ou flou efface les détails au lieu de les construire. Un bord net, une lèvre ou un biseau ne sortent pas d'un flou : il faut partir d'une forme.
+
+## M3 : structure par champs de distance (en cours)
+
+- Principe : chaque forme est un masque (bruit seuillé), sa distance signée (`monotosdf`), un profil de lèvre arrondi (remap lisse de la distance), ajouté à la hauteur. Pas de flou.
+- Une famille = 8 nodes. Une passe = 8 familles = 64 nodes (assert).
+- Disposition : profil médian mesuré (`measures/window_profile.json`), présence du bois, bande du haut, rectangle du carré. Aucun calque de la référence n'entre dans le graphe.
+- Test de signe : `monotosdf` avec `invert=1` renvoie la distance du mauvais côté, tout le canevas se relève et sort blanc. Avec `invert=0`, le relief est correct.
+- Code : [WindowSDF.py](/Users/zenray/Create/Build/Productions/ZenRayHoudini/LouisianaBayou/Heights/Scripts/WindowSDF.py).
+
+## M4 : masques d'abord (en cours)
+
+- Pourquoi ce changement, à 8 passes de M3 et non à 32 : M3 a montré une limite structurelle, démontrée par P07 et P08. Chaque famille fixe son propre plateau de hauteur, donc la fenêtre se découpe en marqueterie (P07) ou en deux tons (P08). Une gamme continue ne sort pas de plateaux. Changement anticipé, consigné ici avec sa preuve.
+- Principe : huit familles de masque par passe, huit nodes chacune (64 nodes, assert). Chaque famille = bruit grossier + bruit fin + seuil + région + bruit de bord (bord dentelé), puis union par max dans un masque par cible : P pour la peinture, H pour les trous. Aucune hauteur par famille, donc rien ne s'empile.
+- Finition unique, hors passes : une distance signée et une lèvre arrondie par cible (peinture +0,28, trou -0,22, largeur de lèvre 0,005), puis un grain fin sur tout.
+- Résultat : gamme continue sur le profil de bois mesuré, une seule altitude de peinture, trous en creux à bord arrondi.
+- Code : [WindowSDF.py](/Users/zenray/Create/Build/Productions/ZenRayHoudini/LouisianaBayou/Heights/Scripts/WindowSDF.py), fonctions `mfam`, `finish_m4`, `run_m4`, passes `M4_P1` à `M4_P3`.
+- Images M4 rangées dans le dossier `versions/window/M3/` avec le préfixe `M4_`.
+- Limites actuelles : biseaux d'extrémité en bandes verticales droites ; stries du carré trop denses et trop sombres ; peu d'éclats clairs dans le carré.
+
+## Journal des passes
+
+| Date | Méthode | Passe | Nodes ajoutés | Planche | Verdict | Défaut nommé |
+|---|---|---|---|---|---|---|
+| 10 October 2026 | M3 | P01, invert=1 | 64 | [panel_P01.png](/Users/zenray/Create/Build/Productions/ZenRayHoudini/LouisianaBayou/Heights/versions/window/M3/panel_P01.png) | non atteinte | tout blanc : signe de la distance inversé (gardée comme preuve) |
+| 10 October 2026 | M3 | P01, invert=0 | 64 | [panel_P01_invert0.png](/Users/zenray/Create/Build/Productions/ZenRayHoudini/LouisianaBayou/Heights/versions/window/M3/panel_P01_invert0.png) | non atteinte | structure nette et sans flou ; haut trop sombre ; flocons petits et ronds ; carré sans grain vertical ni cadre |
+| 10 October 2026 | M3b (union) | P02, 8 familles absolues | 64 | [panel_P02_union.png](/Users/zenray/Create/Build/Productions/ZenRayHoudini/LouisianaBayou/Heights/versions/window/M3/panel_P02_union.png) | non atteinte | union sans empilement : bon ; aplats plats sans fibre ; trous du haut ronds et peu nombreux ; stries du carré trop dures |
+| 10 October 2026 | M3b (union) | P03, après P02, plus finition grain (2 nodes hors passes) | 64 | [panel_P03_union.png](/Users/zenray/Create/Build/Productions/ZenRayHoudini/LouisianaBayou/Heights/versions/window/M3/panel_P03_union.png) | non atteinte, plus proche | haut : peau irrégulière, proche de la référence ; lames : flocons horizontaux, un peu gros ; carré : stries encore dures, pas de cadre ; aucun biseau aux extrémités des lames |
+| 10 October 2026 | M3b (union) | P04, après P02 à P03 | 64 | [panel_P04_union.png](/Users/zenray/Create/Build/Productions/ZenRayHoudini/LouisianaBayou/Heights/versions/window/M3/panel_P04_union.png) | non atteinte | biseaux de bout de lame : deux traits verticaux trop nets ; cadre du carré visible ; haut trop sombre (zones de bois non peintes) ; stries du carré trop sombres et denses |
+| 10 October 2026 | M3b (union) | P05, après P02 à P04 | 64 | [panel_P05_union.png](/Users/zenray/Create/Build/Productions/ZenRayHoudini/LouisianaBayou/Heights/versions/window/M3/panel_P05_union.png) | non atteinte, plus proche | haut plus clair, proche de la tonalité ; flocons des lames plus rares ; biseaux plus doux mais encore verticaux ; stries du carré trop nombreuses : trois familles en min se cumulent |
+| 10 October 2026 | M3b (union) | P06, après P02 à P05 | 64 | [panel_P06_union.png](/Users/zenray/Create/Build/Productions/ZenRayHoudini/LouisianaBayou/Heights/versions/window/M3/panel_P06_union.png) | non atteinte | annulation des stries par max : efficace, mais la levée à 0,60 efface les biseaux d'extrémité |
+| 10 October 2026 | M3b (union) | P07, après P02 à P06 | 64 | [panel_P07_union.png](/Users/zenray/Create/Build/Productions/ZenRayHoudini/LouisianaBayou/Heights/versions/window/M3/panel_P07_union.png) | non atteinte | biseaux partiellement rétablis ; lames contrastées mais en marqueterie : chaque famille fixe son plateau |
+| 10 October 2026 | M3c (trois tons) | P08, mêmes passes, niveaux normalisés (peinture 0,78, trou 0,34) | 412 au total | [panel_P08_three_tone.png](/Users/zenray/Create/Build/Productions/ZenRayHoudini/LouisianaBayou/Heights/versions/window/M3/panel_P08_three_tone.png) | non atteinte | deux tons seulement : contraste excessif, gamme de gris perdue ; limite structurelle des plateaux |
+| 10 October 2026 | M4 (masques d'abord) | P01 : 8 familles de masque, une lèvre par cible | 64 | [panel_M4_P01.png](/Users/zenray/Create/Build/Productions/ZenRayHoudini/LouisianaBayou/Heights/versions/window/M3/panel_M4_P01.png) | non atteinte | gamme continue, plus de marqueterie ; écailles trop douces, trous trop pâles, stries du carré presque absentes |
+| 10 October 2026 | M4 | P02 : +8 familles (trous du haut, stries du carré, éclats) | 64 | [panel_M4_P02.png](/Users/zenray/Create/Build/Productions/ZenRayHoudini/LouisianaBayou/Heights/versions/window/M3/panel_M4_P02.png) | non atteinte, très proche sur le haut et les lames | haut : peinture usée à trous irréguliers ; lames : éclats dentelés ; carré : stries verticales et éclats ; manquent les biseaux d'extrémité et les reliefs de bord |
+| 10 October 2026 | M4 | P03 : +8 familles (bandes d'extrémité, trous fins, micro-fissures) | 64 | [panel_M4_P03.png](/Users/zenray/Create/Build/Productions/ZenRayHoudini/LouisianaBayou/Heights/versions/window/M3/panel_M4_P03.png) | non atteinte, la plus proche | extrémités : bandes sombres droites, pas de biseau oblique ; carré : stries trop denses et trop sombres, peu d'éclats clairs |
+| 10 October 2026 | M4 | P04 : +8 familles (éclats du carré, bords d'extrémité irréguliers, trous fins) | 64 | [panel_M4_P04.png](/Users/zenray/Create/Build/Productions/ZenRayHoudini/LouisianaBayou/Heights/versions/window/M3/panel_M4_P04.png) | non atteinte, la plus proche | haut et lames proches de la référence ; carré surpeint en plaques claires ; extrémités encore verticales |
+| 10 October 2026 | M4 | P05 : +8 familles (ombres de trou, variations de ton, extrémités irrégulières), couverture de d1 et d2 corrigée (seuils 0,12 à 0,24 et 0,18 à 0,28) | 64 | [panel_M4_P05.png](/Users/zenray/Create/Build/Productions/ZenRayHoudini/LouisianaBayou/Heights/versions/window/M3/panel_M4_P05.png) | non atteinte | variations de ton des lames proches de la référence ; carré toujours surpeint et strié ; haut légèrement moucheté |
+| 10 October 2026 | M4 | P06 (première version, rejetée) : f1 et f2 en blocs sombres dans le carré | 64 | [panel_M4_P06.png](/Users/zenray/Create/Build/Productions/ZenRayHoudini/LouisianaBayou/Heights/versions/window/M3/panel_M4_P06.png) | non atteinte, rejetée | taches sombres en blocs sur le carré, loin du grain vertical de la référence |
+| 10 October 2026 | M4 | P06b (f1 et f2 réécrites en stries verticales fines, même passe) | 64 | [panel_M4_P06b.png](/Users/zenray/Create/Build/Productions/ZenRayHoudini/LouisianaBayou/Heights/versions/window/M3/panel_M4_P06b.png) | non atteinte, direction bonne | carré : stries verticales avec éclats, mais encore trop sombres et denses ; haut et lames inchangés |
+| 10 October 2026 | M4 | P07 : +8 familles (peinture large sur le carré, stries rares, micro-fissures, éclats) | 64 | [panel_M4_P07.png](/Users/zenray/Create/Build/Productions/ZenRayHoudini/LouisianaBayou/Heights/versions/window/M3/panel_M4_P07.png) | non atteinte | carré plus clair mais en bloc à bords nets, trop peint ; stries encore présentes ; haut un peu plus uniforme |
+| 10 October 2026 | M4 | P08 : +8 familles (rides verticales et éclats du carré, trous courts, bords du haut et extrémités), plus couche de base : grain vertical continu dans le carré (3 nodes hors passe) | 64 | [panel_M4_P08.png](/Users/zenray/Create/Build/Productions/ZenRayHoudini/LouisianaBayou/Heights/versions/window/M3/panel_M4_P08.png) | non atteinte | grain vertical du carré visible ; bloc clair à bord net (hérité de P07) et nappes sombres ; haut et lames proches |
+
+## Prochaine passe
+
+P09 (M4) : cadre sombre le long du bord du carré (bande de contour dans la couche de base, comme le liseré sombre d'une planche), pour que le bord net du bloc peint ne soit plus lu comme une coupure ; retirer une des nappes sombres du carré. Finition grain fin hors passes.
+
+Pont live injoignable à 20:02 (connexion refusée sur 127.0.0.1:18812) : P04 et P05 rejouées en headless via hython, même code. Si le pont revient, la session live reste équivalente.
+
+## Résultats de la série v4 : N, masques absolus, seize méthodes (10 October 2026)
+
+Chaque phase est une passe : un graphe construit d'un coup, rendu une fois, mesuré par masques. La phase 1 est uniforme et commune aux séries v3 et v4 (même spec, même graine). Les séries v1 et v2 (lèvre 0,005, règle nette ou séparée) sont archivées dans `archive_v1_v2`, leur verdict est remplacé. Journal brut : [passes.jsonl](/Users/zenray/Create/Build/Productions/ZenRayHoudini/LouisianaBayou/Heights/measures/passes.jsonl), une ligne par passe, avec sa date (10 October 2026).
+
+### N, mesuré (10 October 2026)
+
+Source : [capacity_n.jsonl](/Users/zenray/Create/Build/Productions/ZenRayHoudini/LouisianaBayou/Heights/measures/capacity_n.jsonl). Familles de 8 nodes, rendu à 1254 px.
+
+| Familles | Nodes au total | Construction (s) | Recalcul (s) | Statut |
+|---|---|---|---|---|
+| 8 | 104 | 0,18 | 0,84 | ok |
+| 64 | 552 | 0,87 | 1,5 | ok |
+| 128 | 1064 | 1,64 | 2,24 | ok |
+| 256 | 2088 | 3,45 | 4,25 | ok |
+| 512 | 4136 | 6,86 | 8,25 | ok |
+| 1024 | 8232 | 13,05 | 66,79 | ok, au-delà de 20 s |
+
+Décision de travail : N = 4096 nodes par passe pour les familles de masques (512 familles), la plus grande taille mesurée sous 20 s de recalcul. Le coût dépend du type de nœud, et le N de chaque méthode a été mesuré séparément :
+
+- masques de 8 nodes (m, madd, sdf, worley, streak, union par max) : 512 familles, 6 à 8 s ;
+- absolus et additifs (abs, fam) : 256 familles, 16 à 19 s ;
+- cellules (cell) : 128 familles, 8 s ; 512 familles ont dépassé 150 s (mesure du 10 October 2026) ;
+- Eikonal (eik) : 256 familles, 14 à 16 s, sortie inerte ;
+- tuiles (tile) : 384 familles, 13 à 15 s de recalcul et autant de construction ;
+- Turing (turing) : 32 familles, 17 à 19 s.
+
+### Ce qui a changé pour la série v4 (10 October 2026)
+
+- Lèvre commune de 0,0015 au lieu de 0,005. Test sur M01 passe 2, même spec : clair du haut 0,139 contre 0,204 (référence 0,244), sombre du haut 0,152 contre 0,209 (référence 0,246).
+- Seuils absolus, issus de la seule référence : 75e et 25e centiles globaux, 0,580 et 0,275. Cibles par région, mesurées sur la référence : haut clair 0,335 et sombre 0,149 ; lames 0,204 et 0,308 ; bouts 0,167 et 0,299 ; carré 0,356 et 0,073.
+- Dans la série v3, les seuils étaient des percentiles propres à chaque région : chaque région recevait 25 % de clair et 25 % de sombre par construction. Cela effaçait la concentration de peinture du haut, qui est la structure principale de la référence.
+- Contrôle proportionnel vers ces cibles, gain 0,5, même graine dans toutes les phases d'une méthode.
+
+### Tableau v4, passe 4 (10 October 2026)
+
+Source : [summary_v4.md](/Users/zenray/Create/Build/Productions/ZenRayHoudini/LouisianaBayou/Heights/measures/summary_v4.md). La concentration de la référence est +0,131 en clair et −0,159 en sombre (haut moins lames).
+
+| ID | familles | nodes | recalcul (s) | top clair P2 à P4 (cible 0.335) | top sombre P2 à P4 (cible 0.149) | lames clair / sombre P4 (cibles 0.204 / 0.308) | carré clair / sombre P4 (cibles 0.356 / 0.073) | concentration P4, clair / sombre (cibles +0.131 / -0.159) |
+|---|---|---|---|---|---|---|---|---|
+| M01 | 512 | 4136 | 6.9 à 7.2 | 0.23 à 0.28 à 0.26 | 0.09 à 0.09 à 0.09 | 0.18 / 0.30 | 0.60 / 0.03 | +0.08 / -0.21 |
+| M02 | 256 | 2082 | 16.3 à 16.5 | 0.09 à 0.11 à 0.12 | 0.06 à 0.07 à 0.08 | 0.13 / 0.26 | 0.26 / 0.04 | -0.00 / -0.17 |
+| M03 | 256 | 2082 | 17.5 à 19.2 | 0.12 à 0.14 à 0.17 | 0.04 à 0.04 à 0.04 | 0.16 / 0.25 | 0.28 / 0.00 | +0.01 / -0.20 |
+| M04 | 256 | 2082 | 17.1 à 17.5 | 0.15 à 0.17 à 0.24 | 0.06 à 0.07 à 0.06 | 0.21 / 0.27 | 0.07 / 0.01 | +0.04 / -0.20 |
+| M05 | 512 | 4138 | 6.8 à 7.0 | 0.27 à 0.33 à 0.18 | 0.16 à 0.12 à 0.19 | 0.16 / 0.37 | 0.55 / 0.06 | +0.02 / -0.18 |
+| M06 | 128 | 808 | 8.0 à 8.3 | 0.17 à 0.24 à 0.25 | 0.07 à 0.07 à 0.08 | 0.17 / 0.28 | 0.51 / 0.04 | +0.08 / -0.20 |
+| M07 | 512 | 3112 | 6.6 à 7.1 | 0.23 à 0.22 à 0.22 | 0.05 à 0.06 à 0.06 | 0.16 / 0.27 | 0.35 / 0.07 | +0.06 / -0.21 |
+| M08 | 32 | 296 | 17.7 à 18.4 | 0.13 à 0.31 à 0.25 | 0.31 à 0.04 à 0.12 | 0.06 / 0.53 | 0.26 / 0.00 | +0.19 / -0.41 |
+| M09 | 512 | 3624 | 5.8 à 6.3 | 0.14 à 0.22 à 0.16 | 0.07 à 0.06 à 0.08 | 0.15 / 0.29 | 0.34 / 0.07 | +0.02 / -0.21 |
+| M10 | 256 | 2088 | 14.2 à 14.4 | 0.28 à 0.28 à 0.28 | 0.04 à 0.04 à 0.04 | 0.20 / 0.23 | 0.26 / 0.00 | +0.09 / -0.19 |
+| M11 | 512 | 4136 | 7.1 à 7.4 | 0.29 à 0.27 à 0.25 | 0.09 à 0.07 à 0.09 | 0.16 / 0.31 | 0.59 / 0.03 | +0.09 / -0.22 |
+| M12 | 512 | 4136 | 6.7 à 7.2 | 0.22 à 0.38 à 0.19 | 0.12 à 0.08 à 0.14 | 0.17 / 0.32 | 0.67 / 0.02 | +0.02 / -0.18 |
+| M13 | 512 | 4136 | 7.8 à 7.9 | 0.05 à 0.05 à 0.05 | 0.04 à 0.04 à 0.04 | 0.04 / 0.25 | 0.03 / 0.00 | +0.01 / -0.20 |
+| M14 | 512 | 4137 | 6.7 à 7.1 | 0.24 à 0.38 à 0.11 | 0.13 à 0.07 à 0.25 | 0.11 / 0.40 | 0.38 / 0.07 | -0.00 / -0.15 |
+| M15 | 512 | 3624 | 6.7 à 6.7 | 0.27 à 0.31 à 0.26 | 0.08 à 0.07 à 0.09 | 0.15 / 0.30 | 0.26 / 0.00 | +0.11 / -0.22 |
+| M16 | 384 | 3496 | 13.3 à 13.7 | 0.30 à 0.12 à 0.32 | 0.05 à 0.10 à 0.05 | 0.26 / 0.24 | 0.41 / 0.00 | +0.06 / -0.20 |
+
+### Verdict à l'œil (10 October 2026)
+
+Planches en contact : [contact_V4a](/Users/zenray/Create/Build/Productions/ZenRayHoudini/LouisianaBayou/Heights/versions/window/contact_V4a.png), [contact_V4b](/Users/zenray/Create/Build/Productions/ZenRayHoudini/LouisianaBayou/Heights/versions/window/contact_V4b.png), [contact_V4c](/Users/zenray/Create/Build/Productions/ZenRayHoudini/LouisianaBayou/Heights/versions/window/contact_V4c.png).
+
+- Aucune méthode ne reproduit la structure de la référence : peinture concentrée sur le haut, trous profonds, bords nets des lames.
+- Les formes d'éclats les plus proches : M09 (éclats étirés) et M06 (cellules), mais répartis sur toutes les lames.
+- La densité du haut la plus proche : M16, M14 et M11, sans concentration.
+- Écartées après quatre phases : M05 (poivre et sel, contraste excessif) ; M08 (grandes courbes, échelle fausse, 32 familles au plus) ; M10 (sortie Eikonal inerte, même image à quatre phases) ; M13 (sortie planaire nulle, même image à quatre phases) ; M15 (grands arcs SDF, carré vide) ; M07 et M12 (grain trop fin, sans structure) ; M02, M03 et M04 (taches éparses, contraste faible).
+
+### Diagnostic mesuré (10 October 2026)
+
+1. Le haut manque de trous. Sa fraction sombre reste entre 0,04 et 0,14 pour treize méthodes sur seize, contre 0,149 : M05 et M14 dépassent, M10 reste à 0,037. Cause mesurée : une profondeur de trou de 0,22 ramène le haut (0,49) à 0,27, juste au-dessus du seuil sombre (0,275). Test sur M01 passe 4 : profondeur 0,38 porte le sombre du haut de 0,091 à 0,216, mais fait baisser le clair du haut de 0,256 à 0,217 et monter le sombre des lames de 0,305 à 0,372. Profondeur et couverture se couplent : il faut les régler ensemble.
+2. Les erreurs de position ne baissent pas. Une famille tirée au hasard ne tombe pas sur la structure de la référence, donc l'IoU reste entre 0,03 et 0,20 pour toutes les méthodes. C'est une borne de la méthode, pas un défaut de réglage. Pour une méthode aléatoire, le bon critère est la fraction par région.
+3. Le contrôleur oscille. Le clair et le sombre se compensent, puisqu'un trou retire de la lumière. Aucune série ne converge en quatre passes.
+4. L'union par max sature. Avec 512 familles uniformes, la peinture couvre 85 % du canevas (mesuré). La calibration par famille ramène cette part à 34 %.
+5. M02 et M03 plafonnent. Le niveau des familles, tiré entre 0,45 et 0,9, ne fait pas monter le clair, même à couverture 0,6 (plafond du contrôleur).
+
+### À trancher (10 October 2026)
+
+- Critère de choix : (a) ton œil sur les planches, (b) les fractions absolues par région du tableau, (c) les deux. Proposition : (c), en visant la concentration du haut (+0,131 clair, −0,159 sombre).
+- Faut-il une série v5 avant de trancher, avec une profondeur de trou pilotée par le même contrôleur ? Coût estimé : environ 45 passes, soit 15 à 20 minutes de calcul.
+- Candidates pour v5 : M09 et M06 (formes), M16, M14 et M11 (densité du haut). Écartées : M05, M08, M10, M13, M15, M07, M12, M02, M03, M04.
+- Non fait : T5 (optimisation du graphe) n'a pas été lancé, faute de méthode retenue.
+
+Le cron à 10 secondes est impossible : le plancher est de 60 secondes (ScheduleWakeup et CronCreate).
+
+## Verdicts de Matthieu à l'œil et série de huit passes (10 October 2026)
+
+- Verdicts : la méthode 1 (M01) et la méthode 11 (M11) ont le mieux marché, mais on est encore loin du résultat. La méthode 14 (M14) était intelligente, quasi pas mal. M01 a peu varié entre P1 et P4. (10 October 2026)
+- Retenues : M01, M11 et M14, huit passes chacune. (10 October 2026)
+- Règle de contexte : chaque passe porte son N, ses couvertures avant et après, sa lèvre, sa profondeur, ses fractions face aux cibles, ses fichiers et un champ d'avis à l'œil. Une passe repart de l'existant, jamais de zéro. (10 October 2026)
+- Plan : 1 consigner les verdicts (fait) ; 2 noter /zenray-methodology dans zenray-houdini ; 3 fiches de contexte de P1 à P4 ; 4 passe P5 de M01 à 768 familles, garder le maximum dont le recalcul reste sous 20 s ; 5 passes P5 à P8 de M01 ; 6 mêmes passes pour M11 puis M14 ; 7 HTML 3 × 8 avec fiches et champs d'avis ; 8 consigner les résultats et trancher la suite, en attente de ta validation. (10 October 2026)
+- Lecture retenue : la profondeur de trou reste à 0,22 de P5 à P8, pour garder la comparaison avec P1 à P4. Le levier de profondeur est à trancher à la tâche 8. (10 October 2026)
+
+## Boucle M01 récursive : N indicatif, M par la boucle, score intégré, cellules pour la vérification (10 October 2026, 23:51)
+
+- 10 October 2026, 23:51 : consigne de Matthieu : « go faire window height jusqu'à la perfection (donc au moins minimum 96 passes de manière récursive) ». Les chiffres sont des indications : N et M sont déterminés par la boucle elle-même. Le score n'est plus déprécié : il entre dans la méthode. Les cellules servent à vérifier le score. Le seuil de 99 % se teste, il ne se fixe pas à l'avance. La relance toutes les 15 secondes se fait par un processus en arrière-plan, car un cron ne descend pas sous la minute. (10 October 2026)
+- 10 October 2026, 23:51 : feuilles de la séquence (méthode tasks-sequence), état à l'écriture de cette section :
+
+| # | Feuille | État |
+|---|---|---|
+| 1 | Consigner la méthode dans le skill zenray-methodology, avec corrections datées | en cours |
+| 2 | Consigner dans le skill zenray-houdini, correction de la ligne « score déprécié » | en cours |
+| 3 | Synchroniser les deux skills (sync-skill.sh) et relire la copie | à faire |
+| 4 | Écrire cette liste ici et la consigne dans FEEDBACK | liste faite, FEEDBACK à faire |
+| 5 | Écrire Scripts/LoopM01.py : une passe, mesure par régions et cellules, journal, statut, planche HTML, pause de 15 s, arrêts | à faire |
+| 6 | Passe test unique au premier plan : image, journal, planche, statut | à faire |
+| 7 | Lancer la boucle en arrière-plan à partir de la passe suivante | à faire |
+| 8 | Consigner le premier résultat ici et dans le journal progress | à faire |
+| 9 | Rendre compte : passes faites, seuils à tester, limite de position, checkpoint Assets refusé | à faire |
+
+- 10 October 2026 : règles retenues.
+  - N : 512 familles, soit 4136 nodes (indicatif, environ 4096). La boucle essaie 768 familles (6184 nodes, 12,8 à 18,1 s mesurés) si la passe précédente cuit en moins de 10 s, et revient à 512 si une passe à 768 dépasse 20 s. Le double, 8232 nodes, a cuit en 66,8 s (mesuré) : hors budget, non utilisé.
+  - M : au moins 96 passes, plafond de sécurité de 300, arrêt anticipé si plateau (30 passes sans gain de 0,002 sur la pire cellule, après la passe 96).
+  - Score : fractions claire et sombre par région (haut, lames, bouts, carré) sur les seuils absolus de la référence. Il règle la couverture de chaque région d'une passe à la suivante (contrôleur proportionnel, gain 0,5).
+  - Vérification : grille de 4 lignes et 2 colonnes, soit 8 cellules, chacune comparée à la même cellule de la référence. Seuils provisoires : 0,01 par cellule, 0,02 par région, à tester contre le verdict à l'œil.
+  - Limite mesurée : le score mesure des proportions, pas la position des motifs. L'IoU de familles aléatoires reste entre 0,03 et 0,20. Un 99 % pixel à pixel est hors d'atteinte avec ce générateur ; le 99 % qui se mesure est statistique, par cellule.
+  - Référence : jamais copiée dans le graphe, elle ne sert qu'à mesurer.
+  - Relance : processus en arrière-plan, pause de 15 secondes entre deux passes. Pas de cron.
+- 10 October 2026 : fichiers. Driver : /Users/zenray/Create/Build/Productions/ZenRayHoudini/LouisianaBayou/Heights/Scripts/LoopM01.py. Journal de boucle, append-only : /Users/zenray/Create/Build/Productions/ZenRayHoudini/LouisianaBayou/Heights/measures/loop/M01_loop.jsonl. Statut : /Users/zenray/Create/Build/Productions/ZenRayHoudini/LouisianaBayou/Heights/measures/loop/M01_status.json. Planche de suivi : /Users/zenray/Create/Build/Productions/ZenRayHoudini/LouisianaBayou/Heights/versions/window/planche_loop_M01.html. Journal du moteur, inchangé : /Users/zenray/Create/Build/Productions/ZenRayHoudini/LouisianaBayou/Heights/measures/passes.jsonl.
+
+### Résultats de la boucle, état au 10 October 2026, 23:59 (10 October 2026)
+
+| Passe | Familles | Nodes | Cuisson | Pire cellule | Pire région | Profondeur | Verdict |
+|---|---|---|---|---|---|---|---|
+| P9 (test) | 512 | 4136 | 9,0 s | 0,076 | 0,127 | 0,22 | en cours |
+| P10 (essai retiré) | 768 | 6184 | 17,8 s | 0,175 | 0,184 | 0,2377 | désactivé |
+| P11 | 512 | 4136 | 8,4 s | 0,071 | 0,219 | 0,22 | en cours |
+
+- 10 October 2026 : P10 a montré qu'augmenter les familles et piloter la profondeur ensemble déstabilise le carré (part sombre de 0,077 à 0,243). Les deux adaptations sont désactivées dans le driver (`ADAPT_N`, `ADAPT_HOLE`). (10 October 2026)
+- 10 October 2026 : la boucle tourne en arrière-plan depuis P12 ; ses passes suivantes se lisent dans `measures/loop/M01_loop.jsonl` et dans la planche `versions/window/planche_loop_M01.html`. (10 October 2026)
+- 10 October 2026 : état des feuilles : 1 et 2 consignées dans les skills ; 3 synchronisées ; 4 FEEDBACK écrit ; 5 et 6 faites ; 7 faite (processus lancé) ; 8 faite dans cette section et dans le journal progress ; 9 en cours, à rendre au fil des passes. Checkpoint Assets refusé : la session est liée au projet vegetation-assets-collection-01, je ne la réattribue pas. (10 October 2026)
+
+### Correction et pivot, 11 October 2026 (11 October 2026)
+
+| Passe | Familles | Cuisson | Profondeur | Pire cellule | Pire région | Réglage |
+|---|---|---|---|---|---|---|
+| P11 | 512 | 8,4 s | 0,22 | 0,071 | 0,219 | répartition calculée, gain 0,5 |
+| P12 | 512 | 7,6 s | 0,22 | 0,153 | 0,148 | même réglage |
+| P13 | 512 | 12,4 s | 0,22 | 0,073 | 0,233 | même réglage |
+| P14 | 512 | 7,7 s | 0,22 | 0,154 | 0,137 | même réglage |
+| P15 | 512 | 7,1 s | 0,22 | 0,078 | 0,077 | même réglage |
+| P16 | 512 | 9,1 s | 0,22 | 0,147 | 0,115 | même réglage, gain 0,25 |
+| P17 | 512 | 8,1 s | 0,22 | 0,061 | 0,060 | répartition figée |
+| P18 | 512 | 7,8 s | 0,22 | 0,061 | 0,060 | répartition figée |
+| P19 | 512 | 7,2 s | 0,22 | 0,060 | 0,060 | répartition figée |
+| P20 | 512 | 9,4 s | 0,2244 | 0,054 | 0,053 | profondeur pilotée |
+| P21 | 512 | 7,6 s | 0,2258 | 0,051 | 0,051 | profondeur pilotée |
+| P22 | 512 | 7,2 s | 0,2264 | 0,051 | 0,050 | profondeur pilotée |
+| P23 | 512 | 12,1 s | 0,2271 | 0,050 | 0,049 | profondeur pilotée |
+| P24 | 512 | 7,7 s | 0,2277 | 0,049 | 0,048 | profondeur pilotée |
+| P25 | 768 | 15,1 s | 0,2282 | 0,051 | 0,054 | N à 768 testé |
+
+- 11 October 2026 : diagnostic. L'oscillation vient de la répartition des familles recalculée à chaque passe ; un compartiment qui passe de 84 à 24 familles change la structure de toute la zone. (11 October 2026)
+- 11 October 2026 : état. La zone « haut » reste le facteur limitant (0,050). Le seuil provisoire de 0,01 par cellule est loin : la boucle n'est pas près d'atteindre le verdict. (11 October 2026)
+- 11 October 2026 : la boucle tourne en arrière-plan depuis P26 (N = 768 si la cuisson tient sous 20 s, profondeur pilotée, répartition figée). Journal : `measures/loop/M01_loop.jsonl`. (11 October 2026)
+
+### Test des leviers par composante, 11 October 2026 (11 October 2026)
+
+- 11 October 2026 : base P38 à EQUIV 0,552 ; levier L1 (étirement 3 à 8, lèvre 0,004) à 0,48 ; levier L2 (étirement 3 à 6, lèvre 0,0025, taille 0,002 à 0,05) à 0,562, passes P42 à P44. Les composantes sont couplées. Détail, tableau et méthode suivante dans `~/.claude/skills/zenray-houdini/references/WindowBilan1.md`, section 11. (11 October 2026)
+- 11 October 2026 : boucle en pause à P44 ; réglages L2 actifs dans `LoopM01.py`. (11 October 2026)
