@@ -1,0 +1,104 @@
+{
+  "standardfolder1": {
+    "val": 1,
+    "raw": "1",
+    "has_expr": false,
+    "expr": null
+  },
+  "facade_params": {
+    "val": 0,
+    "raw": "0",
+    "has_expr": false,
+    "expr": null
+  },
+  "plank_count": {
+    "val": 28,
+    "raw": "ch(\"../plank_count\")",
+    "has_expr": false,
+    "expr": null
+  },
+  "plank_thickness": {
+    "val": 0.025,
+    "raw": "ch(\"../plank_thickness\")",
+    "has_expr": false,
+    "expr": null
+  },
+  "plank_overlap": {
+    "val": 0.02,
+    "raw": "ch(\"../plank_overlap\")",
+    "has_expr": false,
+    "expr": null
+  },
+  "width": {
+    "val": 4.0,
+    "raw": "ch(\"../width\")",
+    "has_expr": false,
+    "expr": null
+  },
+  "length": {
+    "val": 6.0,
+    "raw": "ch(\"../length\")",
+    "has_expr": false,
+    "expr": null
+  },
+  "wall_height": {
+    "val": 2.2,
+    "raw": "ch(\"../wall_height\")",
+    "has_expr": false,
+    "expr": null
+  },
+  "front_gable_height": {
+    "val": 2.4,
+    "raw": "ch(\"../front_gable_height\")",
+    "has_expr": false,
+    "expr": null
+  },
+  "rear_gable_height": {
+    "val": 2.4,
+    "raw": "ch(\"../rear_gable_height\")",
+    "has_expr": false,
+    "expr": null
+  },
+  "uv_seed": {
+    "val": 42.0,
+    "raw": "42",
+    "has_expr": false,
+    "expr": null
+  },
+  "uv_v_offset_scale": {
+    "val": 5.0,
+    "raw": "5",
+    "has_expr": false,
+    "expr": null
+  },
+  "uv_random_flip": {
+    "val": 1,
+    "raw": "on",
+    "has_expr": false,
+    "expr": null
+  },
+  "uv_u_variants": {
+    "val": 1,
+    "raw": "1",
+    "has_expr": false,
+    "expr": null
+  },
+  "snapshot_version": {
+    "val": "v002 (symmetric_gable_cuts)",
+    "raw": "v002 (symmetric_gable_cuts)",
+    "has_expr": false,
+    "expr": null
+  },
+  "standardfolder41": {
+    "val": 0,
+    "raw": "0",
+    "has_expr": false,
+    "expr": null
+  },
+  "facade_params2": {
+    "val": 0,
+    "raw": "0",
+    "has_expr": false,
+    "expr": null
+  }
+}

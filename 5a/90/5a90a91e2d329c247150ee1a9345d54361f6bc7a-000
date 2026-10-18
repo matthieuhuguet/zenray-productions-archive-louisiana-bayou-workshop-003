@@ -1,0 +1,13 @@
+{
+  "window_interior_samples": 90,
+  "window_interior_wall_hits": [],
+  "window_border_misses": [],
+  "upper_roof_samples": 36844,
+  "upper_roof_uncovered_count": 0,
+  "upper_roof_uncovered_examples": [],
+  "upper_roof_inverted_hits": 0,
+  "gable_seam_samples": 1804,
+  "exposed_gable_timber": [],
+  "roof_rows": 14,
+  "Cycles": "Cycles"
+}

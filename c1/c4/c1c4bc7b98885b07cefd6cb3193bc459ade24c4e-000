@@ -1,0 +1,85 @@
+# 9 October 2026 : roof shingle UVs on the 36-slot trim sheet. Runs inside a Python SOP: set KIND before exec(open(this file).read()).
+# EN: each shingle (piece_id) draws one of the 36 slots with a shuffled bag that refuses the slots of the neighbours within 0.55 m, plus a left-right mirror (the only flip that keeps the ragged edge at the eave). The top face takes a crop of the slot (width scaled by the real tile width, length from the eave); the thickness faces (sides) take a narrow VERTICAL BAND of the same slot so the grain stays continuous; the butt face takes the bottom strip. Attributes: prim int `slot`, string `tile`, colour `Cd` = random colour of the slot.
+# FR : une tuile de la feuille par bardeau, sac melange sans voisine identique, miroir gauche-droite, bande verticale pour l'epaisseur.
+import hou, json, random, math, colorsys
+SLOTS_JSON = '/Users/zenray/.claude/tmp/tmp-houdini-september-2026/tmp-bayou-louisiana/02_sources/textures/BayouRoofTrimSheet36_Slots_9October2026.json'
+ROOF = 'M_WoodShinglesRoof_03'
+SEED = 9
+SLOT_W_M = 0.32          # real width that fills the whole slot width (the widest tile)
+SLOT_H_M = 0.335         # real length that fills the whole slot height (measured aspect 180 / 172 of the slots)
+NEIGHBOUR_RADIUS = 0.55  # metres : slots of tiles closer than this are refused
+ALLOW_MIRROR = True
+try: KIND
+except NameError: KIND = 'roof_church'
+geo = hou.pwd().geometry()
+slots = json.load(open(SLOTS_JSON))['slots']
+rngc = random.Random(SEED * 31 + 7)
+colour = {}
+for s in slots:
+    h = (s['id'] * 0.61803398875 + rngc.random() * 0.05) % 1.0
+    colour[s['id']] = colorsys.hsv_to_rgb(h, 0.62 + 0.2 * rngc.random(), 0.95)
+if geo.findPrimAttrib('tile') is None: geo.addAttrib(hou.attribType.Prim, 'tile', '')
+if geo.findPrimAttrib('slot') is None: geo.addAttrib(hou.attribType.Prim, 'slot', 0)
+pieces = {}
+for pr in geo.prims():
+    if pr.attribValue('material_id') != ROOF: continue
+    pieces.setdefault(pr.attribValue('piece_id'), []).append(pr)
+info = {}
+for pid, prs in pieces.items():
+    top = max(prs, key=lambda q: q.normal()[1]); n = top.normal()
+    g = hou.Vector3(0, -1, 0); d = g - n * g.dot(n)
+    d = d.normalized() if d.length() > 1e-6 else hou.Vector3(0, 0, 1)
+    u_ax = n.cross(d).normalized()
+    pts = [v.point().position() for q in prs for v in q.vertices()]
+    t_min = min(p.dot(u_ax) for p in pts); t_max = max(p.dot(u_ax) for p in pts)
+    s_min = min(p.dot(-d) for p in pts); s_max = max(p.dot(-d) for p in pts)
+    h_min = min(p.dot(n) for p in pts); h_max = max(p.dot(n) for p in pts)
+    c = sum((p for p in pts), hou.Vector3()) / len(pts)
+    info[pid] = dict(n=n, d=d, u=u_ax, t0=t_min, w=t_max - t_min, s0=s_min, L=s_max - s_min, h0=h_min, T=h_max - h_min, c=c)
+order = sorted(info, key=lambda k: (0 if info[k]['c'][0] < 0 else 1, round(info[k]['c'][1], 2), info[k]['c'][2]))
+rng = random.Random(SEED)
+deck = []
+assigned = []                                            # (centre, slot)
+choice = {}
+for pid in order:
+    c = info[pid]['c']
+    banned = set(sl for (cc, sl) in assigned if (cc - c).length() < NEIGHBOUR_RADIUS)
+    pick = None
+    for _ in range(80):
+        if not deck:
+            deck = [s['id'] for s in slots]; rng.shuffle(deck)
+        k = deck.pop()
+        if k not in banned: pick = k; break
+    if pick is None: pick = rng.choice([s['id'] for s in slots if s['id'] not in banned] or [1])
+    flip = ALLOW_MIRROR and rng.random() < 0.5
+    choice[pid] = (pick, flip, rng.random(), rng.random(), rng.random())
+    assigned.append((c, pick))
+for pid, prs in pieces.items():
+    I = info[pid]; slot, flip, r_a, r_b, r_c = choice[pid]
+    u0, u1, v0, v1 = slots[slot - 1]['uv']
+    ku = (u1 - u0) / SLOT_W_M; kv = (v1 - v0) / SLOT_H_M
+    crop = min(I['w'], SLOT_W_M) * ku
+    ua = u0                                                # 9 October 2026 (Matthieu) : tiles are glued to the LEFT edge and the BOTTOM edge of their slot, always ; the brighter lower rim of the sheet must line up on every tile. FR : collé à gauche et en bas du slot, toujours.
+    ub_side = [u0 + r_b * max((u1 - u0) - I['T'] * ku, 0.0), u0 + r_c * max((u1 - u0) - I['T'] * ku, 0.0)]
+    for pr in prs:
+        nrm = pr.normal(); nt = I['n']
+        if nrm.dot(nt) > 0.9: kind = 'top'
+        elif nrm.dot(nt) < -0.9: kind = 'under'
+        elif abs(nrm.dot(I['u'])) > 0.7: kind = 'side'
+        elif nrm.dot(I['d']) > 0: kind = 'butt'
+        else: kind = 'head'
+        for v in pr.vertices():
+            p = v.point().position(); t = p.dot(I['u']) - I['t0']; s = p.dot(-I['d']) - I['s0']; h = p.dot(nt) - I['h0']
+            if kind in ('top', 'under'):
+                uu = ua + min(t, SLOT_W_M) * ku; vv = v0 + min(s / SLOT_H_M, 1.0) * (v1 - v0)
+            elif kind == 'side':                           # vertical band : grain continues along the slope
+                uu = ub_side[0 if nrm.dot(I['u']) < 0 else 1] + h * ku; vv = v0 + min(s / SLOT_H_M, 1.0) * (v1 - v0)
+            elif kind == 'butt':                           # bottom strip of the slot
+                uu = ua + min(t, SLOT_W_M) * ku; vv = v0 + h * kv
+            else:                                          # head, hidden : top strip
+                uu = ua + min(t, SLOT_W_M) * ku; vv = v1 - h * kv
+            uu = min(max(uu, u0), u1); vv = min(max(vv, v0), v1)
+            if flip: uu = u0 + u1 - uu
+            v.setAttribValue('uv', (uu, vv, 0.0))
+        pr.setAttribValue('slot', slot); pr.setAttribValue('tile', '%s:%02d%s' % (KIND, slot, 'm' if flip else ''))
+        pr.setAttribValue('Cd', colour[slot])

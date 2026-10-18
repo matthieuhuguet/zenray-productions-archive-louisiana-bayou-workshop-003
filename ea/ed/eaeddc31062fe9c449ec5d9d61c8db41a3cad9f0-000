@@ -1,0 +1,63 @@
+# 8 October 2026 : double view of a window : coloured mesh (left) and UV layout over the trim sheet (right). EN: same colour on both sides, one island per face. FR : double vue maillage + UV, meme couleur des deux cotes.
+import json, sys, math
+import numpy as np
+from PIL import Image, ImageDraw, ImageFont
+data = json.load(open(sys.argv[1])); trim = sys.argv[2]; out = sys.argv[3]; NAME = sys.argv[4] if len(sys.argv) > 4 else 'Window A'
+PX = 1000                          # size of each half
+# ---- mesh view : 3/4 from the outside (+z), painter's algorithm, flat shading
+def view(yaw_deg, pitch_deg, label):
+    yaw, pit = math.radians(yaw_deg), math.radians(pitch_deg)
+    R = np.array([[math.cos(yaw), 0, math.sin(yaw)], [0, 1, 0], [-math.sin(yaw), 0, math.cos(yaw)]]) @ np.array([[1, 0, 0], [0, math.cos(pit), -math.sin(pit)], [0, math.sin(pit), math.cos(pit)]])
+    allp = np.array([p for f in data for p in f['P']]); c = allp.mean(0)
+    cam = (allp - c) @ R           # rotate the cloud: view from +z after rotation
+    polys = []
+    for f in data:
+        P = (np.array(f['P']) - c) @ R
+        n = np.cross(P[1] - P[0], P[2] - P[0]); nn = np.linalg.norm(n)
+        shade = 0.55 + 0.45 * abs(n[2] / nn) if nn > 1e-12 else 0.7
+        polys.append((P[:, 2].mean() + (0.0 if f.get('uv') else -1000.0 * 0 ), P, f['Cd'], shade))  # COLOURED_ON_TOP : see below
+    polys.sort(key=lambda t: t[0])
+    if os.environ.get('UNTEXTURED_FIRST'):
+        polys.sort(key=lambda t: (0 if tuple(t[2]) == (0.42, 0.42, 0.44) else 1, t[0]))
+    ext = np.abs(cam[:, :2]).max(); s = PX * 0.44 / ext
+    im = Image.new('RGB', (PX, PX), (28, 28, 30)); d = ImageDraw.Draw(im)
+    for z, P, col, sh in polys:
+        pts = [(PX / 2 + p[0] * s, PX / 2 - p[1] * s) for p in P]
+        d.polygon(pts, fill=tuple(int(255 * min(1, c_ * sh)) for c_ in col), outline=(15, 15, 15))
+    d.text((14, 12), label, fill=(235, 235, 235), font=FONT)
+    return im
+try: FONT = ImageFont.truetype('/Users/zenray/Library/Fonts/InterVariable.ttf', 26)
+except Exception: FONT = ImageFont.load_default()
+# ---- UV view over the trim sheet
+bg = Image.open(trim).convert('RGB').resize((PX, PX)); bg = Image.blend(bg, Image.new('RGB', (PX, PX), (20, 20, 22)), 0.55)
+uvim = bg.copy(); ov = Image.new('RGBA', (PX, PX), (0, 0, 0, 0)); od = ImageDraw.Draw(ov)
+for f in data:
+    if not f.get('uv'): continue
+    pts = [(u * PX, (1 - v) * PX) for u, v in f['uv']]
+    col = tuple(int(255 * c_) for c_ in f['Cd'])
+    od.polygon(pts, fill=col + (150,), outline=col + (255,))
+uvim = Image.alpha_composite(uvim.convert('RGBA'), ov).convert('RGB'); d = ImageDraw.Draw(uvim)
+import os
+SEAMS = [float(x) for x in os.environ.get('SEAMS', '0.814,0.663,0.561,0.421,0.313,0.212,0.111').split(',')]   # groove rows measured on the height map (v from the bottom)
+for sv in ([] if os.environ.get('RECTS') else SEAMS): d.line((0, (1 - sv) * PX, PX, (1 - sv) * PX), fill=(255, 255, 255), width=2)
+for item in [x for x in os.environ.get('RECTS', '').split(';') if x]:
+    lab, nums = item.split(':'); u0, u1, v0, v1 = [float(q) for q in nums.split(',')]
+    d.rectangle((u0 * PX, (1 - v1) * PX, u1 * PX, (1 - v0) * PX), outline=(255, 255, 255), width=3); d.text((u0 * PX + 8, (1 - v1) * PX + 6), lab, fill=(255, 255, 255), font=FONT)
+d.text((14, 12), os.environ.get('UVTITLE', 'UV 0-1 over the trim sheet, white lines = seams'), fill=(235, 235, 235), font=FONT)
+# legend
+leg = {}
+for f in data:
+    if f.get('uv'): leg[f['g']] = f['Cd']
+y = PX - 40 * len(leg) - 10
+d = ImageDraw.Draw(m1x) if False else d
+LEG = []
+for k, c_ in leg.items():
+    LEG.append((k, c_))
+for k, c_ in []:
+    d.rectangle((14, y, 44, y + 26), fill=tuple(int(255 * q) for q in c_)); d.text((54, y), k, fill=(235, 235, 235), font=FONT); y += 40
+m1 = view(float(os.environ.get('YAW', -28)), float(os.environ.get('PITCH', 18)), NAME + ', 3/4 from the outside')
+d1 = ImageDraw.Draw(m1); y = PX - 40 * len(LEG) - 10
+for k, c_ in LEG:
+    d1.rectangle((14, y, 44, y + 26), fill=tuple(int(255 * q) for q in c_)); d1.text((54, y), k, fill=(235, 235, 235), font=FONT); y += 40
+sheet = Image.new('RGB', (PX * 2, PX)); sheet.paste(m1, (0, 0)); sheet.paste(uvim, (PX, 0)); sheet.save(out)
+view(0, 0, NAME + ', front').save(out.replace('.png', '_front.png'))

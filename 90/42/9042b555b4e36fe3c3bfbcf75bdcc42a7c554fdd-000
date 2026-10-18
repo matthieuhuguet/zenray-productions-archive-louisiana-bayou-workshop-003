@@ -1,0 +1,51 @@
+# 8 October 2026 : fit a look dev camera + arch placement so the church and arch silhouettes (projected extremes) land on the bounding boxes measured on the concept image (masks technique, flat ground). FR : calage de la camera et de l arche sur les boites mesurees du concept.
+import json, numpy as np, sys
+from scipy.optimize import least_squares
+D = json.load(open(sys.argv[1]))
+church = np.array(D['church'], float) * 2.0           # church scaled 2 in the layout
+arch = np.array(D['arch'], float) * 2.0   # 8 October 2026 : the exported arch points are LOCAL (centred on the origin), no pivot to subtract
+W, H = 1600.0, 788.0
+FOCAL, APERTURE = 35.0, 36.0
+FPX = FOCAL / APERTURE * W
+# bounding boxes measured by eye on the concept (x0, y0, x1, y1)
+CH = np.array([825, 80, 1400, 570.0]); AR = np.array([398, 258, 592, 668.0])
+def rot_y(a):
+    c, s = np.cos(a), np.sin(a); return np.array([[c, 0, s], [0, 1, 0], [-s, 0, c]])
+def project(P, cam, yaw, pitch):
+    # camera looks along -Z rotated by yaw (about Y) then pitch (about X)
+    cy, sy, cp, sp = np.cos(yaw), np.sin(yaw), np.cos(pitch), np.sin(pitch)
+    R = np.array([[cy, 0, sy], [0, 1, 0], [-sy, 0, cy]]) @ np.array([[1, 0, 0], [0, cp, -sp], [0, sp, cp]])
+    L = (P - cam) @ R          # world -> camera (R is camera-to-world, so multiply by R from the right)
+    z = -L[:, 2]
+    ok = z > 0.3
+    u = W / 2 + FPX * L[:, 0] / np.where(ok, z, 1); v = H / 2 - FPX * L[:, 1] / np.where(ok, z, 1)
+    return u, v, ok
+def bbox(u, v, ok):
+    if ok.sum() < len(ok) * 0.9: return np.array([-1e4, -1e4, 1e4, 1e4.__float__()])
+    return np.array([u.min(), v.min(), u.max(), v.max()])
+def model(x):
+    cam = x[0:3]; yaw, pitch = x[3], x[4]; chry = x[5]; ax, az, ary = x[6], x[7], x[8]
+    Pc = church @ rot_y(chry).T
+    Pa = arch @ rot_y(ary).T + np.array([ax, 0, az])
+    return bbox(*project(Pc, cam, yaw, pitch)), bbox(*project(Pa, cam, yaw, pitch))
+def resid(x):
+    bc, ba = model(x)
+    r = list(bc - CH) + list(ba - AR)
+    r += [(x[1] - 1.7) * 30]                        # eye height prior
+    r += [max(0, np.hypot(x[6], x[7]) - 22) * 20]   # keep the arch close to the church
+    r += [max(0, 5 - np.hypot(x[6], x[7])) * 20]
+    return r
+best = None
+rng = np.random.default_rng(5)
+for i in range(400):
+    x0 = np.array([rng.uniform(-25, 25), 1.7, rng.uniform(-45, -10), rng.uniform(-1, 1), rng.uniform(-0.05, 0.2), rng.uniform(-3.14, 3.14), rng.uniform(-12, 12), rng.uniform(-14, 4), rng.uniform(-3.14, 3.14)])
+    try: s = least_squares(resid, x0, max_nfev=400)
+    except Exception: continue
+    if best is None or s.cost < best.cost: best = s
+x = best.x
+print('cost', best.cost)
+bc, ba = model(x)
+print('church bbox', bc.round(0), 'target', CH); print('arch bbox', ba.round(0), 'target', AR)
+names = ['cam_x', 'cam_y', 'cam_z', 'yaw_rad', 'pitch_rad', 'church_ry_rad', 'arch_x', 'arch_z', 'arch_ry_rad']
+out = dict(zip(names, [float(v) for v in x])); out['yaw_deg'] = float(np.degrees(x[3])); out['pitch_deg'] = float(np.degrees(x[4])); out['church_ry_deg'] = float(np.degrees(x[5])); out['arch_ry_deg'] = float(np.degrees(x[8]))
+print(json.dumps(out, indent=1)); json.dump(out, open(sys.argv[2], 'w'), indent=1)

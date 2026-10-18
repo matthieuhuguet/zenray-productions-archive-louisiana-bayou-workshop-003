@@ -1,0 +1,40 @@
+# 10 October 2026 (v5) : church cross + inverted arrow, ONE component. EN: the armature generator now builds the cross post as the SAME beam as the king post and starts the arrow exactly at the top of window B, so this node only (1) makes the crossbar thinner in depth, centred on the post depth, (2) gives post, crossbar and arms one piece_id and px_per_m = 1024. Pieces are found by shape on the front gable (z 6.1 to 6.45). FR : croix et fleche inversee = un seul composant ; la geometrie vient du generateur, ce noeud amincit le croisillon et unifie les identifiants.
+import hou
+import numpy as np
+geo = hou.pwd().geometry()
+CROSSBAR_DEPTH_RATIO = 0.78
+PX_PER_M = 1024.0
+win = hou.node(hou.pwd().parent().path() + '/Component_WindowB').geometry().boundingBox()
+WIN_TOP = win.maxvec()[1]
+for nm, dv in (('px_per_m', 0.0),):
+    if geo.findPrimAttrib(nm) is None: geo.addAttrib(hou.attribType.Prim, nm, dv)
+pieces = {}
+for pr in geo.prims(): pieces.setdefault(pr.attribValue('piece_id'), []).append(pr)
+def box(prs):
+    P = np.array([v.point().position() for pr in prs for v in pr.vertices()], float)
+    return P.min(axis=0), P.max(axis=0)
+# the front gable is the one with the highest z extent. FR : pignon avant.
+post = bar = None; arches = []
+for pid, prs in pieces.items():
+    lo, hi = box(prs); sx, sy = hi[0] - lo[0], hi[1] - lo[1]
+    if not (6.1 < lo[2] and hi[2] < 6.45 and abs(lo[0] + hi[0]) < 0.8 and lo[1] > WIN_TOP - 0.4 and hi[1] < 9.5): continue
+    if sx < 0.2 and sy > 1.0: post = (prs, lo, hi)
+    elif sx > 0.6 and sy < 0.2: bar = (prs, lo, hi)
+    elif 0.2 < sx < 0.6 and 0.2 < sy < 1.0: arches.append((prs, lo, hi))
+def move_points(prs, fn):
+    done = set()
+    for pr in prs:
+        for v in pr.vertices():
+            pt = v.point()
+            if pt.number() in done: continue
+            done.add(pt.number()); pt.setPosition(fn(pt.position()))
+if post and bar:
+    zc = (post[1][2] + post[2][2]) / 2.0
+    zb = (bar[1][2] + bar[2][2]) / 2.0
+    move_points(bar[0], lambda p: (p[0], p[1], zc + (p[2] - zb) * CROSSBAR_DEPTH_RATIO))
+members = [x for x in [post, bar] + arches if x]
+if members:
+    comp_id = members[0][0][0].attribValue('piece_id')
+    for prs, lo, hi in members:
+        for pr in prs:
+            pr.setAttribValue('piece_id', comp_id); pr.setAttribValue('px_per_m', PX_PER_M)

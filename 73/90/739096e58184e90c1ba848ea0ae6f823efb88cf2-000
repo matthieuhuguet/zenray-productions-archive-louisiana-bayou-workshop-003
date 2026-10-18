@@ -1,0 +1,59 @@
+# 8 October 2026 13:46: Match native window cutters to current instances and complete shingle coverage.
+import hou, json
+from pathlib import Path
+ROOT = Path('/Users/zenray/Create/Build/Productions/ZenRayHoudini/LouisianaBayou/versions/window_roof_fixes_8October2026')
+church = hou.node('/obj/Church')
+before = json.loads((ROOT / 'Before.json').read_text())
+facade = church.node('Component_WoodFacade/build_siding')
+code = before['Component_WoodFacade/build_siding']['snippet']
+# Generate uninterrupted rows; native Boolean owns all window openings.
+start = code.index('float hwA =')
+code = code[:start] + 'winA_z = array();\n' + code[start:]
+code = code.replace('array(door_cx - door_hw, -hwB)', 'array(door_cx - door_hw)').replace('array(door_cx + door_hw,  hwB)', 'array(door_cx + door_hw)').replace('array(door_bot, winB_sill)', 'array(door_bot)').replace('array(door_top, winB_sill + winB_h)', 'array(door_top)')
+code = code.replace('float r_ox0[] = array(-hwB); float r_ox1[] = array(hwB); float r_oy0[] = array(winB_sill); float r_oy1[] = array(winB_sill + winB_h);', 'float r_ox0[]; float r_ox1[]; float r_oy0[]; float r_oy1[];')
+code = '// 8 October 2026 13:46: Native Boolean cuts windows from full clapboard rows.\n' + code
+facade.parm('snippet').set(code)
+for kind in ('A','B'):
+    box = church.node('cutter_box_' + kind)
+    component = 'Component_Window' + kind
+    for parm, expr in {'sizex':'ch("../'+component+'/window_width")', 'sizey':'ch("../'+component+'/window_height")', 'sizez':'ch("../'+component+'/frame_depth") + 2*ch("../plank_thickness")', 'ty':'ch("../'+component+'/window_height")/2'}.items():
+        box.parm(parm).deleteAllKeyframes()
+        box.parm(parm).setExpression(expr)
+    box.parm('tz').deleteAllKeyframes()
+    box.parm('tz').set(0)
+    points = church.node('cutter_points_' + kind)
+    source = before['cutter_points_' + kind]['python']
+    source = source.replace("wb.parm('num_windows').eval() if wb.parm('num_windows') else 2", "wb.parm('num_gable_windows').eval()")
+    source = source.replace("for nm in ('place_rear_gable', 'place_front_gable'):", "for nm in (('place_front_gable',) if n == 1 else ('place_rear_gable', 'place_front_gable')):")
+    points.parm('python').set(source)
+boolean = church.node('boolean_window_cut')
+boolean.bypass(False)
+church.node('window_cut_convex').bypass(False)
+roof = church.node('Component_Roof/build_shingles')
+code = before['Component_Roof/build_shingles']['snippet']
+replacements = {
+    'float max_slope_limit = slope_len - 0.05;':'float max_slope_limit = slope_len;',
+    'r < num_rows - 1':'r < num_rows',
+    'float dist = float(r) * row_step;':'float dist = float(r) * row_step - ((r == num_rows - 1) ? overlap * 0.5 : 0.0);',
+    'float raw_width = col_w * 0.95 + (rand(seed + 4.9) - 0.5) * 0.006;':'float raw_width = (r >= num_rows - 2) ? col_w * 1.08 : col_w * 0.95 + (rand(seed + 4.9) - 0.5) * 0.006;',
+    'if (dist >= max_slope_limit - 0.04) continue;':'if (dist >= max_slope_limit) continue;',
+    'if (z_max <= z_min + 0.035) continue;':'if (z_max <= z_min + 0.0001) continue;',
+    'float final_z = (z_min + z_max) * 0.5 + j_z;':'int edge_piece = (z_min <= z_min_allowed + 0.0001 || z_max >= z_max_allowed - 0.0001);\n        float final_z = (z_min + z_max) * 0.5 + (edge_piece ? 0.0 : j_z);',
+    'float j_yaw  = (rand(seed + 7.5) - 0.5) * rot_rand * 0.40;':'float j_yaw = (edge_piece || r >= num_rows - 2) ? 0.0 : (rand(seed + 7.5) - 0.5) * rot_rand * 0.40;',
+}
+for old,new in replacements.items():
+    assert old in code, old
+    code = code.replace(old,new)
+roof.parm('snippet').set('// 8 October 2026 13:46: Complete every row and preserve clipped edge shingles.\n' + code)
+# 8 October 2026 14:00: Place gable timber centers below the roof by their swept half-section.
+armature = church.node('Component_Armature/generate_gables_and_arches')
+source = json.loads((ROOT / 'BeforeArmature.json').read_text())['snippet']
+source = source.replace('float peak_y = wh + gh;', 'float timber_drop = ch("../beam_size") * 0.5 * sqrt(1.0 + pow(2.0 * gh / w, 2.0)) + 0.005;\n    float peak_y = wh + gh - timber_drop;')
+source = source.replace('set(x_left, wh, z)', 'set(x_left, wh - timber_drop, z)').replace('set(x_right, wh, z)', 'set(x_right, wh - timber_drop, z)')
+armature.parm('snippet').set('// 8 October 2026 14:00: Keep gable timbers below shingles; preserve the cross.\n' + source)
+for node in (facade,boolean,church.node('window_cut_convex'),roof,church.node('OUT_church')):
+    node.cook(force=True)
+    assert not node.errors(), (node.path(), node.errors())
+report = {n.path():{'points':len(n.geometry().points()), 'primitives':len(n.geometry().prims()),'errors':n.errors()} for n in (boolean,roof,church.node('OUT_church'))}
+(ROOT / 'PatchReport.json').write_text(json.dumps(report,indent=2))
+result = report

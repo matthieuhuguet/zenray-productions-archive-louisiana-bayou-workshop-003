@@ -1,0 +1,15 @@
+# 11 October 2026 : probe. Prints, for each LB mesh actor, the material used and its parameter values. FR : sonde des matériaux.
+import unreal
+eas = unreal.get_editor_subsystem(unreal.EditorActorSubsystem); mel = unreal.MaterialEditingLibrary
+for a in eas.get_all_level_actors():
+    if not a.get_actor_label().startswith('LB_') or not isinstance(a, unreal.StaticMeshActor): continue
+    c = a.static_mesh_component; m = c.get_material(0)
+    line = [a.get_actor_label(), m.get_path_name() if m else None]
+    if isinstance(m, unreal.MaterialInstanceConstant):
+        line.append(('parent', m.get_editor_property('parent').get_path_name() if m.get_editor_property('parent') else None))
+        for p in m.get_editor_property('vector_parameter_values'): line.append((str(p.parameter_info.name), str(p.parameter_value)))
+        for p in m.get_editor_property('scalar_parameter_values'): line.append((str(p.parameter_info.name), p.parameter_value))
+        for p in m.get_editor_property('texture_parameter_values'): line.append((str(p.parameter_info.name), p.parameter_value.get_name() if p.parameter_value else None))
+    print(line)
+m = unreal.EditorAssetLibrary.load_asset('/Game/ZenRayShards/LouisianaBayou/Materials/M_LB_Surface')
+print('surface expressions', mel.get_num_material_expressions(m), 'vec params', mel.get_vector_parameter_names(m), 'tex params', mel.get_texture_parameter_names(m))

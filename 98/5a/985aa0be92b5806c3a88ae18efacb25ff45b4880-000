@@ -1,0 +1,19 @@
+{
+  "component": "Cop_M_WindowWood_04",
+  "active_version": "v001",
+  "versions": [
+    {
+      "version": "v001",
+      "label": "texturing_start",
+      "dir_name": "v001_texturing_start",
+      "timestamp": "2026-09-18 11:27:31",
+      "kind": "copnet",
+      "node_path": "/obj/Cop_M_WindowWood_04",
+      "final_node": "export_height",
+      "proof_res": 1024,
+      "hip_file": "graph.hiplc",
+      "proof_file": "proof.png",
+      "children_count": 11
+    }
+  ]
+}

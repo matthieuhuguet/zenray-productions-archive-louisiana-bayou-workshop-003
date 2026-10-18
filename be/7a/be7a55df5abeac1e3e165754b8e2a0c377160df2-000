@@ -1,0 +1,305 @@
+{
+  "component": "Cop_M_RoofTiles_HERMES_01",
+  "version": "v004",
+  "label": "orientation-native-voronoi-lit-beton",
+  "timestamp": "2026-09-19 15:36:27",
+  "src_hip": "/Users/zenray/Create/Build/Productions/ZenRayHoudini/LouisianaBayou/LouisianaBayou.hiplc",
+  "node_path": "/obj/Cop_M_RoofTiles_HERMES_01",
+  "final_node": "/obj/Cop_M_RoofTiles_HERMES_01/peak_soft",
+  "proof_res": 1024,
+  "children": [
+    {
+      "name": "rhythm_tiles",
+      "type": "tilepattern"
+    },
+    {
+      "name": "channel_x",
+      "type": "channelextract"
+    },
+    {
+      "name": "bell_remap",
+      "type": "remap"
+    },
+    {
+      "name": "channel_blend",
+      "type": "blend"
+    },
+    {
+      "name": "overlap_y",
+      "type": "channelextract"
+    },
+    {
+      "name": "overlap_remap",
+      "type": "remap"
+    },
+    {
+      "name": "overlap_blend",
+      "type": "blend"
+    },
+    {
+      "name": "tile_level",
+      "type": "randommono"
+    },
+    {
+      "name": "level_blend",
+      "type": "blend"
+    },
+    {
+      "name": "grain_noise",
+      "type": "fractalnoise"
+    },
+    {
+      "name": "grain_remap",
+      "type": "remap"
+    },
+    {
+      "name": "grain_blend",
+      "type": "blend"
+    },
+    {
+      "name": "edge_blur",
+      "type": "blur"
+    },
+    {
+      "name": "edge_bell",
+      "type": "remap"
+    },
+    {
+      "name": "chip_noise",
+      "type": "fractalnoise"
+    },
+    {
+      "name": "chip_steps",
+      "type": "remap"
+    },
+    {
+      "name": "chip_pattern",
+      "type": "blend"
+    },
+    {
+      "name": "height_final",
+      "type": "blend"
+    },
+    {
+      "name": "break_band",
+      "type": "remap"
+    },
+    {
+      "name": "break_select",
+      "type": "randommono"
+    },
+    {
+      "name": "break_select_step",
+      "type": "remap"
+    },
+    {
+      "name": "break_noise",
+      "type": "fractalnoise"
+    },
+    {
+      "name": "break_blobs",
+      "type": "remap"
+    },
+    {
+      "name": "break_band_select",
+      "type": "blend"
+    },
+    {
+      "name": "break_mask_raw",
+      "type": "blend"
+    },
+    {
+      "name": "break_soft",
+      "type": "blur"
+    },
+    {
+      "name": "break_subtract",
+      "type": "blend"
+    },
+    {
+      "name": "break_on_face",
+      "type": "blend"
+    },
+    {
+      "name": "joint_inv",
+      "type": "remap"
+    },
+    {
+      "name": "joint_floor",
+      "type": "remap"
+    },
+    {
+      "name": "height_floor",
+      "type": "blend"
+    },
+    {
+      "name": "lip_mask",
+      "type": "remap"
+    },
+    {
+      "name": "lip_add",
+      "type": "blend"
+    },
+    {
+      "name": "lash_mask",
+      "type": "remap"
+    },
+    {
+      "name": "height_step",
+      "type": "blend"
+    },
+    {
+      "name": "lip_clean_inv",
+      "type": "remap"
+    },
+    {
+      "name": "lip_mask_clean",
+      "type": "blend"
+    },
+    {
+      "name": "peak_soft",
+      "type": "remap"
+    },
+    {
+      "name": "wob_noise",
+      "type": "fractalnoise"
+    },
+    {
+      "name": "wob_remap",
+      "type": "remap"
+    },
+    {
+      "name": "wob_add",
+      "type": "blend"
+    },
+    {
+      "name": "lip_blur",
+      "type": "blur"
+    },
+    {
+      "name": "lash_blur",
+      "type": "blur"
+    },
+    {
+      "name": "chan_core",
+      "type": "remap"
+    },
+    {
+      "name": "chan_deep",
+      "type": "blend"
+    },
+    {
+      "name": "floor_break",
+      "type": "remap"
+    },
+    {
+      "name": "export_height",
+      "type": "rop_image"
+    },
+    {
+      "name": "taper_width",
+      "type": "remap"
+    },
+    {
+      "name": "taper_div",
+      "type": "blend"
+    },
+    {
+      "name": "substrate_tiles",
+      "type": "tilepattern"
+    },
+    {
+      "name": "substrate_level",
+      "type": "remap"
+    },
+    {
+      "name": "substrate_blend",
+      "type": "blend"
+    },
+    {
+      "name": "chunk_cells",
+      "type": "tilepattern"
+    },
+    {
+      "name": "chunk_soft",
+      "type": "blur"
+    },
+    {
+      "name": "chunk_on_tile",
+      "type": "blend"
+    },
+    {
+      "name": "chunk_subtract",
+      "type": "blend"
+    },
+    {
+      "name": "moss_cells",
+      "type": "cellularnoise"
+    },
+    {
+      "name": "moss_shape",
+      "type": "remap"
+    },
+    {
+      "name": "moss_soft",
+      "type": "blur"
+    },
+    {
+      "name": "moss_in_joints",
+      "type": "blend"
+    },
+    {
+      "name": "moss_add",
+      "type": "blend"
+    },
+    {
+      "name": "moss_where",
+      "type": "remap"
+    },
+    {
+      "name": "chunk_edge_noise",
+      "type": "fractalnoise"
+    },
+    {
+      "name": "chunk_edge_remap",
+      "type": "remap"
+    },
+    {
+      "name": "chunk_rough",
+      "type": "blend"
+    },
+    {
+      "name": "chunk_cut",
+      "type": "remap"
+    },
+    {
+      "name": "moss_noise",
+      "type": "fractalnoise"
+    },
+    {
+      "name": "chunk_voronoi",
+      "type": "cellularnoise"
+    },
+    {
+      "name": "chunk_pick",
+      "type": "randommono"
+    },
+    {
+      "name": "chunk_keep",
+      "type": "remap"
+    }
+  ],
+  "external_inputs": [],
+  "hip_file": "graph.hiplc",
+  "proof_file": "proof.png",
+  "levels": {
+    "min": 32,
+    "p1": 32,
+    "p5": 32,
+    "p50": 133,
+    "mean": 118.4,
+    "p95": 174,
+    "p99": 183,
+    "max": 184
+  }
+}

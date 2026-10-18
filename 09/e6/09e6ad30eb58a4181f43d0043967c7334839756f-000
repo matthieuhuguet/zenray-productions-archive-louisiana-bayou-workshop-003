@@ -1,0 +1,53 @@
+{
+  "component": "Component_WoodFacade",
+  "version": "v005",
+  "label": "texturing_start",
+  "timestamp": "2026-09-18 11:16:16",
+  "saved_at_iso": "2026-09-18T11:16:16+02:00",
+  "src_hip": "/Users/zenray/Create/Build/Productions/ZenRayHoudini/LouisianaBayou/LouisianaBayou.hiplc",
+  "node_path": "/obj/Church/Component_WoodFacade",
+  "children": [
+    {
+      "name": "build_siding",
+      "type": "attribwrangle"
+    },
+    {
+      "name": "compute_normals",
+      "type": "normal"
+    },
+    {
+      "name": "compute_uvs",
+      "type": "attribwrangle"
+    },
+    {
+      "name": "set_color",
+      "type": "color"
+    },
+    {
+      "name": "OUT_v004",
+      "type": "null"
+    },
+    {
+      "name": "tag_materials",
+      "type": "attribwrangle"
+    }
+  ],
+  "external_inputs": [],
+  "hip_file": "graph.hiplc",
+  "proof_geo": {
+    "points": 580,
+    "prims": 145,
+    "bbox": [
+      [
+        -2.0250000953674316,
+        0.0,
+        -3.0250000953674316
+      ],
+      [
+        2.0250000953674316,
+        4.62000036239624,
+        3.0250000953674316
+      ]
+    ]
+  }
+}

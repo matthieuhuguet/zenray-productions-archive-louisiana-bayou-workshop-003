@@ -1,0 +1,72 @@
+# 9 October 2026 : window sheet = for each window type (A side window, B gable window) three panels : (1) the Cycles render with the base colour as lit in the scene, (2) the geometry coloured by mesh group, (3) the UV islands filled with the group colour on top of the window wood sheet, with the band guides. FR : feuille fenêtre : rendu éclairé, géométrie colorée par groupe, UV colorés sur la texture.
+import sys, json, math, os
+import numpy as np
+from PIL import Image, ImageDraw, ImageFont
+faces_path, lit_dir, tex_path, outpath = sys.argv[1:5]
+data = json.load(open(faces_path))
+SANS = lambda s: ImageFont.truetype('/Users/zenray/Library/Fonts/AnthropicSans-Regular.ttf', s)
+SER = lambda s: ImageFont.truetype('/Users/zenray/Library/Fonts/AnthropicSerif-Regular.ttf', s)
+COL = {'frame': (140, 90, 40), 'sash': (190, 160, 90), 'glass': (120, 175, 255), 'rail': (200, 120, 0), 'slat_L': (225, 30, 45), 'slat_R': (225, 30, 45)}   # all louver slats are ONE red, whatever their side
+LAB = {'frame': 'Frames and sills', 'sash': 'Sashes', 'glass': 'Glass', 'rail': 'Shutter rails and stiles', 'slat_L': 'Shutter slats (red)', 'slat_R': 'Shutter slats (red)'}
+SEAMS = [0.0, 0.111, 0.212, 0.313, 0.421]; PLANK = [(0.825, 0.990, 'plank 1 : frame'), (0.675, 0.805, 'plank 2 : sash'), (0.430, 0.550, 'patch plank : rail'), (0.575, 0.630, 'molding : glass')]
+PW = 1100
+def render(faces, yaw_deg, pit_deg, W=PW, H=PW, margin=0.9):
+    yaw, pit = math.radians(yaw_deg), math.radians(pit_deg)
+    Ry = np.array([[math.cos(yaw), 0, math.sin(yaw)], [0, 1, 0], [-math.sin(yaw), 0, math.cos(yaw)]]); Rx = np.array([[1, 0, 0], [0, math.cos(pit), -math.sin(pit)], [0, math.sin(pit), math.cos(pit)]]); R = Ry @ Rx
+    Pa = np.array([p for f in faces for p in f['P']]); c = (Pa.min(0) + Pa.max(0)) / 2; pts = (Pa - c) @ R
+    s = min(W * 0.5 * margin / np.abs(pts[:, 0]).max(), H * 0.5 * margin / np.abs(pts[:, 1]).max())
+    img = np.full((H, W, 3), (28, 28, 30), np.uint8); zb = np.full((H, W), -1e9); light = np.array([-0.35, 0.55, 0.75]); light /= np.linalg.norm(light)
+    for f in faces:
+        P = (np.array(f['P']) - c) @ R
+        if len(P) < 3: continue
+        n = np.cross(P[1] - P[0], P[2] - P[0]); nn = np.linalg.norm(n)
+        if nn < 1e-12: continue
+        rgb = np.clip(np.array(COL[f['k']]) * (0.5 + 0.5 * abs(float(n @ light) / nn)), 0, 255).astype(np.uint8)
+        X = W / 2 + P[:, 0] * s; Y = H / 2 - P[:, 1] * s; Z = P[:, 2]
+        for k in range(1, len(P) - 1):
+            x0, x1, x2 = X[0], X[k], X[k + 1]; y0, y1, y2 = Y[0], Y[k], Y[k + 1]
+            xa, xb = int(max(min(x0, x1, x2), 0)), int(min(max(x0, x1, x2) + 1, W - 1)); ya, yb = int(max(min(y0, y1, y2), 0)), int(min(max(y0, y1, y2) + 1, H - 1))
+            if xa > xb or ya > yb: continue
+            den = (y1 - y2) * (x0 - x2) + (x2 - x1) * (y0 - y2)
+            if abs(den) < 1e-9: continue
+            gx, gy = np.meshgrid(np.arange(xa, xb + 1) + 0.5, np.arange(ya, yb + 1) + 0.5)
+            w0 = ((y1 - y2) * (gx - x2) + (x2 - x1) * (gy - y2)) / den; w1 = ((y2 - y0) * (gx - x2) + (x0 - x2) * (gy - y2)) / den; w2 = 1 - w0 - w1
+            ins = (w0 >= -1e-6) & (w1 >= -1e-6) & (w2 >= -1e-6)
+            if not ins.any(): continue
+            z = w0 * Z[0] + w1 * Z[k] + w2 * Z[k + 1]; sb = zb[ya:yb + 1, xa:xb + 1]; up = ins & (z > sb); sb[up] = z[up]; img[ya:yb + 1, xa:xb + 1][up] = rgb
+    return Image.fromarray(img)
+def uvpanel(faces):
+    base = Image.open(tex_path).convert('RGB').resize((PW, PW)); base = Image.blend(base, Image.new('RGB', (PW, PW), (20, 20, 22)), 0.5)
+    ov = Image.new('RGBA', (PW, PW), (0, 0, 0, 0)); d = ImageDraw.Draw(ov)
+    order = sorted(faces, key=lambda f: -sum(1 for g in faces if g['k'] == f['k']))
+    for f in order:
+        if f['k'] == 'glass': continue                       # glass is another material, never drawn on the wood sheet
+        uv = np.array(f['UV'])
+        if len(uv) < 3: continue
+        uv = uv - np.floor(uv.mean(axis=0)); c = COL[f['k']]
+        d.polygon([(float(u) * PW, (1 - float(v)) * PW) for u, v in uv], fill=c + (130,), outline=c + (255,))
+    im = Image.alpha_composite(base.convert('RGBA'), ov); d2 = ImageDraw.Draw(im)
+    for i, sv in enumerate(SEAMS): d2.line((0, (1 - sv) * PW, PW, (1 - sv) * PW), fill=(255, 255, 255, 110), width=1)
+    for lo, hi, lab in PLANK:
+        d2.rectangle((0, (1 - hi) * PW, PW - 1, (1 - lo) * PW), outline=(255, 255, 255, 150)); d2.text((PW - 12, (1 - hi) * PW + 4), lab, fill=(255, 255, 255, 230), font=SANS(22), anchor='ra')
+    for i in range(4): d2.text((12, (1 - (SEAMS[i] + SEAMS[i + 1]) / 2) * PW), 'louver %d' % (i + 1), fill=(255, 255, 255, 230), font=SANS(22), anchor='lm')
+    return im.convert('RGB')
+rows = [('A', 'Window A : side window, shutters open', 'WinSheet_A_lit.png', -90, -14), ('B', 'Window B : gable window', 'WinSheet_B_lit.png', 0, -10)]
+W = PW * 3 + 160; H = 120 + len(rows) * (PW + 130) + 330
+sheet = Image.new('RGB', (W, H), (20, 20, 22)); d = ImageDraw.Draw(sheet)
+d.text((40, 24), 'Louisiana Bayou windows : lit base colour | mesh groups | UV bands on the window wood sheet (9 October 2026)', fill=(255, 255, 255), font=SER(50))
+y = 110
+for key, title, litname, yaw, pit in rows:
+    d.text((40, y), title, fill=(255, 255, 255), font=SANS(40)); y += 60
+    lit = Image.open(os.path.join(lit_dir, litname)).convert('RGB'); lit = lit.resize((PW, int(lit.size[1] * PW / lit.size[0])))
+    lit = lit.crop((0, max(0, (lit.size[1] - PW) // 2), PW, max(0, (lit.size[1] - PW) // 2) + min(PW, lit.size[1])))
+    panels = [lit, render(data[key], yaw, pit), uvpanel(data[key])]
+    for i, im in enumerate(panels): sheet.paste(im, (40 + i * (PW + 40), y))
+    for i, t in enumerate(['Viewport OBJ, base colour textured', 'Geometry coloured by group', 'UV islands on the sheet, coloured by group (bands outlined)']): d.text((40 + i * (PW + 40) + 16, y + 12), t, fill=(255, 255, 255), font=SANS(28), stroke_width=2, stroke_fill=(0, 0, 0))
+    y += PW + 70
+d.text((40, y), 'Legend', fill=(255, 255, 255), font=SANS(36)); y += 56
+for i, (k, c) in enumerate([(k, c) for k, c in COL.items() if k != 'slat_L']):     # slats are one group, one red
+    x = 40 + (i % 3) * (PW + 40); yy = y + (i // 3) * 58
+    d.rectangle((x, yy, x + 80, yy + 40), fill=c, outline=(255, 255, 255)); n = sum(sum(1 for f in data[w] if f['k'] in ((k, 'slat_L') if k == 'slat_R' else (k,))) for w in data)
+    d.text((x + 100, yy + 20), '%s : %d faces (both windows)' % (LAB[k], n), fill=(235, 235, 235), font=SANS(28), anchor='lm')
+sheet.save(outpath); print('done', outpath, sheet.size)

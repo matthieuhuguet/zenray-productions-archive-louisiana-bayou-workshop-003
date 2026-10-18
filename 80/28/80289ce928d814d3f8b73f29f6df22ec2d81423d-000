@@ -1,0 +1,25 @@
+# 9 October 2026 : smooth vertex normals welded BY POSITION. EN: the church pieces are made of loose quads (no shared points), so a Normal SOP leaves every face flat; here vertices at the same position share their normals when the faces are within CUSP degrees, so curved boards (rake, porch gable) shade smoothly and box edges stay hard. FR : normales lissées par position, les quads sont indépendants.
+import hou, math
+import numpy as np
+geo = hou.pwd().geometry()
+CUSP = globals().get('CUSP_DEG', 35.0); TOL = 1e-4
+cosc = math.cos(math.radians(CUSP))
+if geo.findVertexAttrib('N') is None: geo.addAttrib(hou.attribType.Vertex, 'N', (0.0, 1.0, 0.0))
+fn = {}; area = {}
+buckets = {}
+for pr in geo.prims():
+    n = np.array(pr.normal()); a = pr.intrinsicValue('measuredarea') if pr.intrinsicValue('measuredarea') else 1.0
+    fn[pr.number()] = n; area[pr.number()] = a
+    for i, v in enumerate(pr.vertices()):
+        p = v.point().position(); key = (round(p[0] / TOL), round(p[1] / TOL), round(p[2] / TOL))
+        buckets.setdefault(key, []).append((pr.number(), i))
+prims = geo.prims()
+for key, items in buckets.items():
+    if len(items) == 1:
+        pn, i = items[0]; prims[pn].vertices()[i].setAttribValue('N', tuple(fn[pn])); continue
+    for pn, i in items:
+        acc = np.zeros(3)
+        for qn, _ in items:
+            if float(np.dot(fn[pn], fn[qn])) >= cosc: acc += fn[qn] * area[qn]
+        l = np.linalg.norm(acc)
+        prims[pn].vertices()[i].setAttribValue('N', tuple(acc / l) if l > 1e-12 else tuple(fn[pn]))

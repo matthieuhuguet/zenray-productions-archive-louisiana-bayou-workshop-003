@@ -1,0 +1,102 @@
+// 9 October 2026 : closed, solid rake (verge) boards along the flared porch roof edge, one per slope, with front AND back faces and both end caps (no open sheet edges).
+float W = ch("../porch_width");
+float zf = ch("../z_front");
+float y0 = ch("../landing_y");
+float wh = ch("../wall_height");
+float gh = ch("../gable_height");
+float flare = clamp(ch("../roof_flare"), 0.0, 0.6);
+float hw_eave = W * 0.5 + 0.11 * ch("../../arch_scale");
+float ye = y0 + wh;
+float r_zf = zf + 0.12 * ch("../../arch_scale");
+float deck_th = 0.020;
+float up = -0.004;               // 9 October 2026 (v4) : wedged just under the deck, the roof edge overhangs it like the concept
+float dn = 0.085;                // hangs below the deck edge
+float z_out = r_zf - 0.004;        // face set back behind the deck front edge: the roof overhangs the board
+float z_in = r_zf - 0.030;
+int nseg = 24;
+vector prof_top[]; vector prof_bot[];
+for (int i = 0; i <= nseg; i++) {
+    float u = float(i) / float(nseg);
+    float v = (1.0 - flare) * u + flare * pow(u, 1.5);
+    float dy = gh * ((1.0 - flare) + 1.5 * flare * sqrt(max(0.001, u)));
+    vector n = normalize(set(-dy, hw_eave, 0.0));      // left slope outward normal
+    vector pt = set(-hw_eave * (1.0 - u), ye + gh * v, 0.0);
+    vector tp = pt + n * up; vector bt = pt - n * dn;
+    if (i == nseg) {
+        vector tg = normalize(set(hw_eave, dy, 0.0));      // tangent at the apex
+        tp += tg * (-tp.x / tg.x);
+        bt += tg * (-bt.x / tg.x);
+    }
+    append(prof_top, tp);
+    append(prof_bot, bt);
+}
+int ap_ao = -1; int ap_bo = -1; int ap_ai = -1; int ap_bi = -1;
+for (int side = -1; side <= 1; side += 2) {
+    int a_o[]; int b_o[]; int a_i[]; int b_i[];
+    for (int i = 0; i <= nseg; i++) {
+        vector t = prof_top[i]; vector b = prof_bot[i];
+        t.x *= -side; b.x *= -side;       // side=-1 keeps the left slope, side=1 mirrors it
+        if (i == nseg && side == 1) {
+            // 10 October 2026 : the two boards SHARE their apex points, so the ridge joint is one welded strip and no two faces overlap. FR : les deux rives partagent les points du faitage, une seule bande soudee, aucune face superposee.
+            append(a_o, ap_ao); append(b_o, ap_bo); append(a_i, ap_ai); append(b_i, ap_bi);
+        } else {
+            append(a_o, addpoint(0, set(t.x, t.y, z_out)));
+            append(b_o, addpoint(0, set(b.x, b.y, z_out)));
+            append(a_i, addpoint(0, set(t.x, t.y, z_in)));
+            append(b_i, addpoint(0, set(b.x, b.y, z_in)));
+            if (i == nseg) { ap_ao = a_o[i]; ap_bo = b_o[i]; ap_ai = a_i[i]; ap_bi = b_i[i]; }
+        }
+    }
+    for (int i = 0; i < nseg; i++) {
+        int quads[];
+        // outer face (+Z), inner face (-Z), top face, bottom face; winding flipped on the mirrored side
+        int o = addprim(0, "poly", a_o[i], b_o[i], b_o[i+1], a_o[i+1]);
+        int n_ = addprim(0, "poly", a_i[i+1], b_i[i+1], b_i[i], a_i[i]);
+        int tp = addprim(0, "poly", a_i[i], a_o[i], a_o[i+1], a_i[i+1]);
+        int bt = addprim(0, "poly", b_o[i], b_i[i], b_i[i+1], b_o[i+1]);
+        int ids[] = array(o, n_, tp, bt);
+        foreach (int q; ids) {
+            if (side == 1) removeprim(0, q, 0);
+        }
+        if (side == 1) {
+            o = addprim(0, "poly", a_o[i+1], b_o[i+1], b_o[i], a_o[i]);
+            n_ = addprim(0, "poly", a_i[i], b_i[i], b_i[i+1], a_i[i+1]);
+            tp = addprim(0, "poly", a_i[i+1], a_o[i+1], a_o[i], a_i[i]);
+            bt = addprim(0, "poly", b_o[i+1], b_i[i+1], b_i[i], b_o[i]);
+            ids = array(o, n_, tp, bt);
+        }
+        foreach (int q; ids) { setprimgroup(0, "group_trim", q, 1); setprimattrib(0, "piece_id", q, 900 + (side + 1) * 50 + i); }
+    }
+    // end caps: eave end (i=0) and ridge end (i=nseg)
+    int c0 = (side == -1) ? addprim(0, "poly", a_i[0], b_i[0], b_o[0], a_o[0]) : addprim(0, "poly", a_o[0], b_o[0], b_i[0], a_i[0]);
+    // 10 October 2026 : no cap at the ridge end (the two boards are welded there). FR : pas de bouchon au faitage.
+    setprimgroup(0, "group_trim", c0, 1);
+    setprimattrib(0, "piece_id", c0, 990 + side);
+}
+
+// 9 October 2026 : second edge of the L. A vertical fascia along each eave, from the front rake board back to the church wall.
+float zb_ = ch("../z_back");
+float r_zb = zb_ - 0.03 * ch("../../arch_scale");
+float leg_t = 0.022;
+float leg_top = ye - 0.004;
+float leg_bot = ye - dn;
+for (int side = -1; side <= 1; side += 2) {
+    float xo = side * (hw_eave + 0.0);                 // outer face of the eave edge
+    float xi = xo - side * leg_t;
+    vector pmin = set(min(xo, xi), leg_bot, r_zb);
+    vector pmax = set(max(xo, xi), leg_top, r_zf - 0.008);
+    int p[]; resize(p, 8);
+    p[0] = addpoint(0, set(pmin.x, pmin.y, pmin.z)); p[1] = addpoint(0, set(pmax.x, pmin.y, pmin.z));
+    p[2] = addpoint(0, set(pmax.x, pmin.y, pmax.z)); p[3] = addpoint(0, set(pmin.x, pmin.y, pmax.z));
+    p[4] = addpoint(0, set(pmin.x, pmax.y, pmin.z)); p[5] = addpoint(0, set(pmax.x, pmax.y, pmin.z));
+    p[6] = addpoint(0, set(pmax.x, pmax.y, pmax.z)); p[7] = addpoint(0, set(pmin.x, pmax.y, pmax.z));
+    int f[];
+    // built inward on purpose: the reverse node after this wrangle flips every face outward
+    append(f, addprim(0, "poly", p[0], p[1], p[2], p[3]));
+    append(f, addprim(0, "poly", p[7], p[6], p[5], p[4]));
+    append(f, addprim(0, "poly", p[3], p[2], p[6], p[7]));
+    append(f, addprim(0, "poly", p[4], p[5], p[1], p[0]));
+    append(f, addprim(0, "poly", p[0], p[4], p[7], p[3]));
+    append(f, addprim(0, "poly", p[2], p[6], p[5], p[1]));
+    foreach (int q; f) { setprimgroup(0, "group_trim", q, 1); setprimattrib(0, "piece_id", q, 1200 + side); }
+}

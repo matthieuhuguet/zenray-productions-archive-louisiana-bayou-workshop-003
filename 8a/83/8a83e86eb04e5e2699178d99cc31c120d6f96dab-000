@@ -1,0 +1,10 @@
+{
+  "node_path": "/obj/Church/Component_WoodFacade",
+  "node_type": "zenray_component_woodfacade",
+  "label": "per_plank_uv_offset",
+  "version": "v003",
+  "timestamp": "2026-09-13 10:28:42",
+  "points": 580,
+  "prims": 145,
+  "hip": "/Users/zenray/Create/Build/Productions/ZenRayHoudini/LouisianaBayou.hiplc"
+}

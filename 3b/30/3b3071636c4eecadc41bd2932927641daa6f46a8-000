@@ -1,0 +1,32 @@
+# 9 October 2026 : count the ROWS of the reference roof by walking up the slope along several lines and counting colour changes (tile to tile).
+# FR : nombre de rangées = nombre de changements de couleur le long d'une ligne de plus grande pente.
+import sys, numpy as np
+from PIL import Image
+im = Image.open(sys.argv[1]).convert('RGB'); a = np.asarray(im).astype(float)
+def walk(p0, p1, n=1400, jump=40, gap_dark=0.30):
+    p0 = np.array(p0, float); p1 = np.array(p1, float)
+    pts = [p0 + (p1 - p0) * t for t in np.linspace(0, 1, n)]
+    cols = [a[int(round(p[1])), int(round(p[0]))] for p in pts]
+    # tile = run of similar colour; dark gaps (shadow lines) ignored
+    runs = 0; cur = None; run_len = 0; counts = []
+    for c in cols:
+        v = c.max() / 255.0
+        if v < gap_dark: continue
+        if cur is None: cur = c; run_len = 1; runs = 1; continue
+        if np.abs(c - cur).max() > jump:
+            if run_len >= 3: pass
+            cur = c; run_len = 1; runs += 1
+        else:
+            run_len += 1; cur = cur * 0.9 + c * 0.1
+    return runs
+# church: from the eave line to the ridge line, same fraction along the length
+e0, e1 = (50, 745), (655, 676); r0, r1 = (285, 497), (890, 362)
+print('church')
+for s in (0.12, 0.25, 0.4, 0.55, 0.7, 0.85):
+    pe = (e0[0] + (e1[0]-e0[0])*s, e0[1] + (e1[1]-e0[1])*s - 3); pr = (r0[0] + (r1[0]-r0[0])*s, r0[1] + (r1[1]-r0[1])*s + 3)
+    print(' s=%.2f rows=%d' % (s, walk(pe, pr)))
+e0, e1 = (735, 740), (925, 722); r0, r1 = (862, 600), (1042, 572)
+print('porch')
+for s in (0.2, 0.35, 0.5, 0.65, 0.8):
+    pe = (e0[0] + (e1[0]-e0[0])*s, e0[1] + (e1[1]-e0[1])*s - 3); pr = (r0[0] + (r1[0]-r0[0])*s, r0[1] + (r1[1]-r0[1])*s + 3)
+    print(' s=%.2f rows=%d' % (s, walk(pe, pr, n=500)))

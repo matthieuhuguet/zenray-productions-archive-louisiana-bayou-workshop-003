@@ -1,0 +1,43 @@
+# 11 October 2026 : runs in the ZenRayShards editor (queue). Builds L_LouisianaBayouLookdev: the six Louisiana Bayou meshes at the origin, a movable sun and sky light, sky atmosphere, a manual-exposure post process and the Cycles camera PC_camera converted with the measured axis rule (Unreal = 100 * (x, z, y)). Then one screenshot from that camera. Values in lb_params.json.
+# FR : construit le niveau de l'église dans Unreal (meshes, soleil, ciel, exposition, caméra Cycles) et prend une capture.
+import unreal, json, math
+P = json.load(open('/Users/zenray/Create/Build/Productions/ZenRayHoudini/LouisianaBayou/unreal/lb_params.json'))
+eal = unreal.EditorAssetLibrary; les = unreal.get_editor_subsystem(unreal.LevelEditorSubsystem); eas = unreal.get_editor_subsystem(unreal.EditorActorSubsystem); V = unreal.Vector
+def hv(v): return V(v[0], v[2], v[1])  # Houdini direction -> Unreal direction
+if eal.does_asset_exist(P['level']): les.load_level(P['level'])
+else: assert les.new_level(P['level']), 'new_level failed'
+world = unreal.EditorLevelLibrary.get_editor_world(); assert world.get_name() == 'L_LouisianaBayouLookdev', world.get_name()
+for a in eas.get_all_level_actors():
+    if a.get_actor_label().startswith('LB_'): eas.destroy_actor(a)
+for n in P['meshes']:
+    sm = eal.load_asset('%s/Meshes/SM_%s' % (P['root'], n)); a = eas.spawn_actor_from_object(sm, V(0, 0, 0)); a.set_actor_label('LB_' + n)
+    a.static_mesh_component.set_mobility(unreal.ComponentMobility.MOVABLE)
+S = P['sun']; sun = eas.spawn_actor_from_class(unreal.DirectionalLight, V(0, 0, 1500)); sun.set_actor_label('LB_Sun')
+sun.set_actor_rotation(unreal.MathLibrary.make_rot_from_x(hv(S['houdini_travel'])), False)
+lc = sun.light_component; lc.set_mobility(unreal.ComponentMobility.MOVABLE); lc.set_intensity(S['lux']); lc.set_editor_property('light_source_angle', S['angle_deg'])
+lc.set_editor_property('atmosphere_sun_light', True)
+eas.spawn_actor_from_class(unreal.SkyAtmosphere, V(0, 0, 0)).set_actor_label('LB_SkyAtmosphere')
+sky = eas.spawn_actor_from_class(unreal.SkyLight, V(0, 0, 300)); sky.set_actor_label('LB_SkyLight'); sc = sky.light_component
+sc.set_mobility(unreal.ComponentMobility.MOVABLE); sc.set_editor_property('real_time_capture', True); sc.set_intensity(P['sky']['skylight_intensity'])
+fog = eas.spawn_actor_from_class(unreal.ExponentialHeightFog, V(0, 0, 0)); fog.set_actor_label('LB_HeightFog'); fog.component.set_fog_density(P['fog_density'])  # 11 October 2026 : fills the black lower hemisphere
+pp = eas.spawn_actor_from_class(unreal.PostProcessVolume, V(0, 0, 0)); pp.set_actor_label('LB_PostProcess'); pp.set_editor_property('unbound', True)
+st = pp.settings; st.set_editor_property('override_auto_exposure_method', True); st.set_editor_property('auto_exposure_method', unreal.AutoExposureMethod.AEM_MANUAL)
+st.set_editor_property('override_auto_exposure_apply_physical_camera_exposure', True); st.set_editor_property('auto_exposure_apply_physical_camera_exposure', False)
+st.set_editor_property('override_auto_exposure_bias', True); st.set_editor_property('auto_exposure_bias', P['exposure_bias'])
+st.set_editor_property('override_dynamic_global_illumination_method', True); st.set_editor_property('dynamic_global_illumination_method', unreal.DynamicGlobalIlluminationMethod.LUMEN)
+st.set_editor_property('override_reflection_method', True); st.set_editor_property('reflection_method', unreal.ReflectionMethod.LUMEN)
+pp.set_editor_property('settings', st)
+Cm = P['camera']; pos = V(*[100 * c for c in (Cm['houdini_pos_m'][0], Cm['houdini_pos_m'][2], Cm['houdini_pos_m'][1])])
+cam = eas.spawn_actor_from_class(unreal.CineCameraActor, pos, unreal.MathLibrary.make_rot_from_x(hv(Cm['houdini_forward']))); cam.set_actor_label('LB_Camera_PC')
+cc = cam.get_cine_camera_component(); fb = cc.filmback; fb.sensor_width = Cm['sensor_mm'][0]; fb.sensor_height = Cm['sensor_mm'][1]; cc.set_editor_property('filmback', fb)
+cc.set_editor_property('current_focal_length', Cm['focal_mm']); cc.set_editor_property('current_aperture', Cm['aperture'])
+fs = cc.focus_settings; fs.focus_method = unreal.CameraFocusMethod.MANUAL; fs.manual_focus_distance = Cm['focus_cm']; cc.set_editor_property('focus_settings', fs)
+def add_cam(label, Cm):
+    pos = V(*[100 * c for c in (Cm['houdini_pos_m'][0], Cm['houdini_pos_m'][2], Cm['houdini_pos_m'][1])])
+    cam = eas.spawn_actor_from_class(unreal.CineCameraActor, pos, unreal.MathLibrary.make_rot_from_x(hv(Cm['houdini_forward']))); cam.set_actor_label(label)
+    cc = cam.get_cine_camera_component(); fb = cc.filmback; fb.sensor_width = Cm['sensor_mm'][0]; fb.sensor_height = Cm['sensor_mm'][1]; cc.set_editor_property('filmback', fb)
+    cc.set_editor_property('current_focal_length', Cm['focal_mm']); cc.set_editor_property('current_aperture', Cm['aperture'])
+    fs = cc.focus_settings; fs.focus_method = unreal.CameraFocusMethod.MANUAL; fs.manual_focus_distance = Cm['focus_cm']; cc.set_editor_property('focus_settings', fs); return cam
+add_cam('LB_Camera_View', P['camera_view'])
+les.save_current_level(); print('level saved', world.get_path_name(), 'actors', len([a for a in eas.get_all_level_actors() if a.get_actor_label().startswith('LB_')]))
+# 11 October 2026 : stills are rendered by ue_render_still.py (MRQ), take_high_res_screenshot is unreliable.

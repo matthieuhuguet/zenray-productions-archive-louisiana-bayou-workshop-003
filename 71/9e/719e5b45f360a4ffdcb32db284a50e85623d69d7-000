@@ -1,0 +1,18 @@
+# 10 October 2026 : imports the five Louisiana Bayou FBX files into /Game/ZenRayShards/LouisianaBayou/Meshes and prints their bounds.
+# FR : importe les cinq FBX de l'église et affiche leurs bornes (pour vérifier le repère).
+import unreal
+SRC='/Users/zenray/Create/Build/Productions/ZenRayHoudini/LouisianaBayou/unreal_export'
+DST='/Game/ZenRayShards/LouisianaBayou/Meshes'
+names=['church_paint','church_windows','church_glass','church_roof','floor']
+tasks=[]
+for n in names:
+    t=unreal.AssetImportTask(); t.filename='%s/%s.fbx'%(SRC,n); t.destination_path=DST; t.destination_name='SM_'+n
+    t.automated=True; t.save=True; t.replace_existing=True
+    o=unreal.FbxImportUI(); o.import_mesh=True; o.import_textures=False; o.import_materials=False; o.import_as_skeletal=False
+    o.static_mesh_import_data.combine_meshes=True; o.static_mesh_import_data.generate_lightmap_u_vs=True
+    t.options=o; tasks.append(t)
+unreal.AssetToolsHelpers.get_asset_tools().import_asset_tasks(tasks)
+for n in names:
+    sm=unreal.EditorAssetLibrary.load_asset('%s/SM_%s'%(DST,n))
+    b=sm.get_bounds()
+    print(n, 'origin',b.origin,'extent',b.box_extent, 'tris',sm.get_num_triangles(0) if hasattr(sm,'get_num_triangles') else '?')

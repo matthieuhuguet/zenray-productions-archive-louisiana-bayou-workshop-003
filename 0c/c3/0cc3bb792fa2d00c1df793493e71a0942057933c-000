@@ -1,0 +1,61 @@
+{
+  "component": "Fence_Picket",
+  "version": "v001",
+  "label": "module-piquet",
+  "timestamp": "2026-09-19 17:40:52",
+  "saved_at_iso": "2026-09-19T17:40:52+02:00",
+  "src_hip": "/Users/zenray/Create/Build/Productions/ZenRayHoudini/LouisianaBayou/LouisianaBayou.hiplc",
+  "node_path": "/obj/Fence_Picket",
+  "children": [
+    {
+      "name": "build_picket",
+      "type": "python"
+    },
+    {
+      "name": "row_points",
+      "type": "line"
+    },
+    {
+      "name": "row",
+      "type": "copytopoints::2.0"
+    },
+    {
+      "name": "build_rails",
+      "type": "python"
+    },
+    {
+      "name": "assemble",
+      "type": "merge"
+    },
+    {
+      "name": "tone",
+      "type": "color"
+    },
+    {
+      "name": "normals",
+      "type": "normal"
+    },
+    {
+      "name": "OUT_fence_picket",
+      "type": "null"
+    }
+  ],
+  "external_inputs": [],
+  "hip_file": "graph.hiplc",
+  "proof_geo": {
+    "points": 247,
+    "prims": 199,
+    "bbox": [
+      [
+        -1.2999999523162842,
+        -0.12999999523162842,
+        -0.03799999877810478
+      ],
+      [
+        1.2999999523162842,
+        0.6779012084007263,
+        0.009499999694526196
+      ]
+    ]
+  }
+}

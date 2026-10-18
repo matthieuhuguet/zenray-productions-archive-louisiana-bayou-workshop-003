@@ -1,0 +1,86 @@
+# 9 October 2026 : automatic UV verifier, run it instead of looking at every view by hand. EN: exec inside Houdini; returns `result = {'pass': bool, 'checks': [...]}`. Checks : (1) uv is a vertex attribute at the lookdev output, (2) no face of the church groups stretched above LIMIT (polygons with more than 4 sides skipped), (3) no degenerate uv, (4) every wood group sits inside its band of the window wood sheet, (5) glass has no uv on the wood sheet, (6) every prim of the lookdev copy has a material name except floor and Manny, (7) stair wood is the railing only. FR : vérificateur automatique des UV, à lancer plutôt que de tout regarder à la main.
+import hou, collections
+import numpy as np
+LIMIT = globals().get('UV_STRETCH_LIMIT', 2.2)
+BANDS = {'frame': (0.82, 0.995), 'sash': (0.67, 0.81), 'rail': (0.67, 0.995), 'slat_L': (0.0, 0.43), 'slat_R': (0.0, 0.43), 'stair_wood': (0.67, 0.995)}
+checks = []
+def add(name, ok, detail=''): checks.append({'check': name, 'ok': bool(ok), 'detail': detail})
+church = hou.node(globals().get('CHURCH_OUT', '/obj/Church/OUT_church')).geometry()
+look = hou.node('/obj/Church_Lookdev/OUT_church_lookdev').geometry()
+add('uv is a vertex attribute at the lookdev output', look.findVertexAttrib('uv') is not None and look.findPointAttrib('uv') is None, 'vertex=%s point=%s' % (look.findVertexAttrib('uv') is not None, look.findPointAttrib('uv') is not None))
+worst = collections.defaultdict(float); degenerate = collections.Counter(); outband = collections.Counter(); glass_on_wood = 0; counted = collections.Counter()
+for p in church.prims():
+    g = p.attribValue('grp'); vs = list(p.vertices())
+    if len(vs) < 3: continue
+    uv = np.array([list(v.attribValue('uv'))[:2] for v in vs])
+    if g == 'glass':
+        if np.abs(uv).max() > 1e-6: glass_on_wood += 1
+        continue
+    counted[g] += 1
+    if len(vs) <= 4:
+        # 10 October 2026 : the best conditioned corner of the face is tested, a quad with an inline vertex (boolean union) is not degenerate. FR : on teste le meilleur coin de la face, un quad avec un sommet aligne n'est pas degenere.
+        PP = np.array([v.point().position() for v in vs]); best = None
+        for tri in ((0, 1, 2), (0, 1, 3), (0, 2, 3), (1, 2, 3)):
+            if max(tri) >= len(vs): continue
+            a, b, c = tri; dP = np.stack([PP[b] - PP[a], PP[c] - PP[a]], axis=1); dU = np.stack([uv[b] - uv[a], uv[c] - uv[a]], axis=1)
+            q = abs(np.linalg.det(dP.T @ dP))
+            if best is None or q > best[0]: best = (q, dU, dP)
+        if abs(np.linalg.det(best[1])) < 1e-12 or best[0] < 1e-18: degenerate[g] += 1
+        else:
+            s = np.linalg.svd(best[2] @ np.linalg.inv(best[1]), compute_uv=False); worst[g] = max(worst[g], s[0] / max(s[1], 1e-12))
+    key = 'stair_wood' if g == 'stair_wood' else g
+    if key in BANDS:
+        lo, hi = BANDS[key]
+        if uv[:, 1].min() < lo - 0.02 or uv[:, 1].max() > hi + 0.02 or uv[:, 0].min() < -0.02 or uv[:, 0].max() > 1.02: outband[g] += 1
+bad_stretch = {k: round(float(v), 1) for k, v in worst.items() if v > LIMIT and not k.startswith('paint')}
+add('no stretched face on the wood groups (limit %.1f)' % LIMIT, not bad_stretch, str(bad_stretch) if bad_stretch else 'max %s' % {k: round(float(v), 2) for k, v in worst.items() if not k.startswith('paint')})
+add('paint groups stretch under 3', all(v <= 3.0 for k, v in worst.items() if k.startswith('paint')), str({k: round(float(v), 1) for k, v in worst.items() if k.startswith('paint')}))
+add('no degenerate uv', not degenerate, str(dict(degenerate)))
+add('wood groups inside their band', not outband, str(dict(outband)))
+add('glass has no uv on the wood sheet', glass_on_wood == 0, '%d glass faces carry a uv' % glass_on_wood)
+names = collections.Counter(p.attribValue('name') for p in look.prims())
+add('no prim without a material name', names.get('church', 0) == 0, str(dict(names)))
+stair = collections.Counter(p.attribValue('stair_part') for p in church.prims() if p.attribValue('grp') == 'stair_wood')
+add('stair wood is the railing and the 5 step planks (at least 30 faces, more once bevelled), never the deck', set(stair) <= {'rail', 'baluster', 'newel', 'newel_cap', 'ball', 'tread'} and stair.get('tread', 0) >= 30, str(dict(stair)))
+
+# (8) slat shaped pieces outside the slat groups : the bug of 9 October 2026 (96 slats fell into 'frame' because the id tables ended too early). FR : aucune pièce en forme de lamelle hors des groupes de lamelles.
+parent = {}
+def _find(a):
+    while parent.setdefault(a, a) != a:
+        parent[a] = parent[parent[a]]; a = parent[a]
+    return a
+cand = [p for p in church.prims() if p.attribValue('grp') in ('frame', 'sash', 'glass', 'rail')]
+for p in cand:
+    ids = [v.point().number() for v in p.vertices()]
+    for q in ids[1:]: parent[_find(q)] = _find(ids[0])
+pcs = {}
+for p in cand: pcs.setdefault(_find(p.vertices()[0].point().number()), []).append(p)
+wrong = collections.Counter()
+for ps in pcs.values():
+    P = np.array([v.point().position() for p in ps for v in p.vertices()], float); a = np.sort(np.ptp(P, axis=0))
+    if 0.2 < a[2] < 0.45 and a[1] < 0.13 and a[0] < 0.04 and len(ps) <= 6: wrong[ps[0].attribValue('grp')] += 1
+add('every slat shaped piece is in a slat group', not wrong, 'slats found in other groups : %s' % dict(wrong) if wrong else 'none')
+
+# (9) islands glued to the bottom left corner of their band (Matthieu, 9 October 2026). FR : îlots collés au coin bas gauche de leur bande.
+BL = {'frame': 0.825, 'sash': 0.675, 'rail': 0.825}; off = collections.Counter(); tot_bl = collections.Counter()
+for p in church.prims():
+    g = p.attribValue('grp')
+    if g not in BL: continue
+    uv = np.array([list(v.attribValue('uv'))[:2] for v in p.vertices()]); tot_bl[g] += 1
+    if abs(uv[:, 0].min() - 0.012) > 0.004 or abs(uv[:, 1].min() - (BL[g] + 0.004)) > 0.004: off[g] += 1
+add('wood islands start at the bottom left corner of their band', not off, 'not aligned : %s of %s' % (dict(off), dict(tot_bl)) if off else 'all aligned %s' % dict(tot_bl))
+# (10) left and right shutters have the same groups (symmetry)
+sym = collections.Counter()
+for p in church.prims():
+    g = p.attribValue('grp'); cc = p.boundingBox().center()
+    if g in ('slat_L', 'slat_R', 'rail') and cc[0] < -2.9 and abs(cc[2] - 3.93) < 1.3 and cc[1] < 3.6: sym[('slat' if g.startswith('slat') else 'rail', 'R' if cc[2] > 3.93 else 'L')] += 1
+add('both shutters of a window have the same slat and rail counts', sym[('slat', 'L')] == sym[('slat', 'R')] and sym[('rail', 'L')] == sym[('rail', 'R')], str(dict((str(k), v) for k, v in sym.items())))
+add('N (normals) is a vertex attribute at the lookdev output', look.findVertexAttrib('N') is not None and look.findPointAttrib('N') is None, 'vertex=%s point=%s' % (look.findVertexAttrib('N') is not None, look.findPointAttrib('N') is not None))
+
+# (12) every church face owns its points : Cycles (Hydra) ignores authored face varying normals and smooths across shared points, which made a dark wedge on every roof tile (9 October 2026). FR : chaque face a ses propres points, sinon Cycles lisse entre faces voisines.
+seen = set(); nverts = 0
+for p in look.prims():
+    if p.attribValue('name') in ('manny', 'floor'): continue
+    for v in p.vertices(): seen.add(v.point().number()); nverts += 1
+add('every church face owns its points (no smoothing across tiles in Cycles)', len(seen) == nverts, '%d points for %d vertices' % (len(seen), nverts))
+result = {'pass': all(c['ok'] for c in checks), 'checks': checks}

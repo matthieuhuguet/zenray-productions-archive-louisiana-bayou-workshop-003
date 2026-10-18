@@ -1,0 +1,56 @@
+# 9 October 2026 : apply the human-referenced standard to the church : the PORCH DOOR is 2.0 m high (Manny is 1.805 m).
+# EN: k = 2.0 / 1.22 = 1.6393. Architectural envelope dimensions are multiplied by k in the RAW parameters; human-referenced and material-real values stay real (railing 0.9 m, step run 0.30 m, tiles 0.2 to 0.32 m, mouldings, plank thickness). Counts follow the real sizes (planks, shingle rows and columns, louvers).
+# FR : standard = porte du porche a 2 m ; l'enveloppe est multipliee par k dans les parametres bruts, les details reels restent reels.
+import hou, re
+STANDARD_DOOR = 2.0
+BASE_DOOR = 1.22
+K = STANDARD_DOOR / BASE_DOOR
+def r3(x): return round(x, 3)
+c = hou.node('/obj/Church')
+# --- one master parameter that records the standard (VEX literals read it through ch("../../arch_scale"))
+g = c.parmTemplateGroup()
+if not c.parm('arch_scale'):
+    fo = g.findFolder('Church Master Hero Asset') if g.findFolder('Church Master Hero Asset') else None
+    g.append(hou.FloatParmTemplate('standard_door_height', 'Standard Door Height (m)', 1, default_value=(STANDARD_DOOR,)))
+    g.append(hou.FloatParmTemplate('arch_scale', 'Architecture Scale (door standard / 1.22)', 1, default_value=(K,)))
+    c.setParmTemplateGroup(g)
+c.parm('standard_door_height').set(STANDARD_DOOR); c.parm('arch_scale').set(K)
+M = {'width': 4.0*K, 'length': 7.6*K, 'wall_height': 2.2*K, 'front_gable_height': 2.4*K, 'rear_gable_height': 2.4*K, 'cross_height': 0.85*K,
+     'plank_count': round(28*K), 'step_count': 5, 'step_height': 0.6*K/5, 'porch_width': 1.05*K, 'porch_depth': 1.25*K, 'step_run': 0.30, 'railing_height': 0.90,
+     'winA_width': 0.5*K, 'winA_height': 0.9*K, 'winA_sill_y': 0.65*K, 'winA_spacing': 1.6*K,
+     'winB_width': 0.38*K, 'winB_height': 0.65*K, 'winB_sill_y': 2.895*K, 'winB_louver_count': round(22*K),
+     'roof_eave_overhang': 0.22*K, 'roof_gable_overhang': 0.32*K, 'roof_shingle_rows': 21, 'roof_shingle_cols': 52, 'porch_roof_rows': 7, 'porch_roof_cols': 18}
+for k, v in M.items():
+    p = c.parm(k)
+    if p is None: print('missing master parm', k); continue
+    p.set(v if isinstance(v, int) else r3(v))
+def setc(path, **kw):
+    n = hou.node(path)
+    for k, v in kw.items():
+        p = n.parm(k)
+        if p is None: print('missing', path, k); continue
+        if p.keyframes(): p.deleteAllKeyframes()
+        p.set(v if isinstance(v, (int, str)) else r3(v))
+setc('/obj/Church/Component_WindowA', window_width=0.5*K, window_height=0.9*K, louver_count=round(20*K))
+setc('/obj/Church/Component_WindowB', window_width=0.38*K, window_height=0.65*K, louver_count=round(22*K))
+setc('/obj/Church/Component_PorchVestibule', porch_width=1.05*K, porch_depth=1.25*K, landing_y=0.6*K, wall_height=1.4*K, gable_height=0.65*K,
+     door_width=0.66*K, door_height=STANDARD_DOOR, transom_height=0.18*K, offset_x=-0.38*K, width_ref_cols=18.0)
+setc('/obj/Church/Component_PorchStairs', offset_x=-0.38*K)
+setc('/obj/Church/Component_Roof', width_ref_cols=52.0)
+v = c.node('Component_PorchVestibule')
+v.parm('z_front').setExpression('ch("../length")*0.5 + 0.45*ch("../arch_scale")')
+v.parm('z_back').setExpression('ch("../length")*0.5 - 0.85*ch("../arch_scale")')
+# --- architecture literals inside the vestibule wranglers follow arch_scale
+ARCH = 'ch("../../arch_scale")'
+def patch(nm, pairs):
+    n = v.node(nm); s = n.parm('snippet').eval()
+    for a, b in pairs:
+        assert a in s, (nm, a)
+        s = s.replace(a, b)
+    n.parm('snippet').set(s)
+patch('build_walls_and_siding', [('float overhang_eave = 0.11;', 'float overhang_eave = 0.11 * %s;' % ARCH)])
+patch('build_roof', [('float overhang_eave = 0.11;', 'float overhang_eave = 0.11 * %s;' % ARCH), ('float overhang_front = 0.12;', 'float overhang_front = 0.12 * %s;' % ARCH), ('float r_zb = 2.92;', 'float r_zb = zb - 0.03 * %s;' % ARCH)])
+patch('build_rake_boards', [('float hw_eave = W * 0.5 + 0.11;', 'float hw_eave = W * 0.5 + 0.11 * %s;' % ARCH), ('float r_zf = zf + 0.12;', 'float r_zf = zf + 0.12 * %s;' % ARCH), ('float r_zb = 2.92;', 'float zb_ = ch("../z_back");\nfloat r_zb = zb_ - 0.03 * %s;' % ARCH)])
+patch('cut_ridge', [('float hw_eave = W * 0.5 + 0.11;', 'float hw_eave = W * 0.5 + 0.11 * %s;' % ARCH)])
+hou.hipFile.save()
+print('K', K)

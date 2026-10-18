@@ -1,0 +1,186 @@
+# 16 October 2026 : STEP 3, the gable boards and the timber frame follow the same roof height field. EN: WoodFacade keeps its gable clapboards HORIZONTAL and only moves the two ends of every row to the curved roof line (inverse of the profile, found by bisection) ; Armature samples each rafter along the curve (nseg = curve_slices_u points) and its arch braces, king post and cross follow ; cross_fix crops the swept rafter ends along the real tangent. No lattice, no deformation after the fact. Originals are kept in node user data. FR : les planches de pignon restent horizontales, seules leurs extremites suivent la courbe ; les chevrons sont echantillonnes sur la courbe.
+import hou
+
+CHURCH = hou.node('/obj/Church')
+FAC = CHURCH.node('Component_WoodFacade')
+ARM = CHURCH.node('Component_Armature')
+
+DY = r'''
+// 16 October 2026 : ROOF HEIGHT FIELD (same function as Component_Roof). EN: curve array = 0 half width, 1 half length, 2 slope sag, 3 sag position, 4 ridge dip, 5 ridge power. FR : meme champ de hauteur que le toit.
+float zr_dy(float c[]; float x; float z) {
+    float u = clamp(1.0 - abs(x) / max(c[0], 0.000001), 0.0, 1.0);
+    float k = (c[3] > 0.001 && c[3] < 0.999) ? log(0.5) / log(c[3]) : 1.0;
+    float ub = pow(u, k);
+    float zn = min(abs(z) / max(c[1], 0.000001), 1.0);
+    float zt = 1.0 - pow(zn, max(c[5], 0.01));
+    return -c[2] * 4.0 * ub * (1.0 - ub) - c[4] * zt * u;
+}
+'''
+
+WALL = DY + r'''
+// height of the straight gable edge plus the field, at |x|, then its inverse : half width of the gable triangle at height y.
+float zr_wall_y(float c[]; float x; float z; float wh; float gh) {
+    float u = clamp(1.0 - abs(x) / max(c[0], 0.000001), 0.0, 1.0);
+    return wh + gh * u + zr_dy(c, x, z);
+}
+float zr_wall_hw(float c[]; float y; float z; float wh; float gh) {
+    if (y <= wh) return c[0];
+    if (y >= zr_wall_y(c, 0.0, z, wh, gh)) return 0.0;
+    float lo = 0.0; float hi = c[0];
+    for (int it = 0; it < 28; ++it) {
+        float mid = 0.5 * (lo + hi);
+        if (zr_wall_y(c, mid, z, wh, gh) > y) lo = mid; else hi = mid;
+    }
+    return 0.5 * (lo + hi);
+}
+'''
+
+def patch_facade(src):
+    anchor = 'float rgh = ch("../../rear_gable_height");'
+    assert anchor in src
+    src = src.replace(anchor, anchor + '\nfloat cvw[] = array(w * 0.5, (l + 2.0 * ch("../../roof_gable_overhang")) * 0.5, chf("../curve_slope"), chf("../curve_slope_bias"), chf("../curve_ridge"), chf("../curve_ridge_power"));')
+    for g, gh, zg in (('f', 'fgh', 'l * 0.5'), ('r', 'rgh', '-l * 0.5')):
+        old_peak = 'float peak_%s = wh + %s;' % (g, gh)
+        assert old_peak in src
+        src = src.replace(old_peak, 'float peak_%s = zr_wall_y(cvw, 0.0, %s, wh, %s);' % (g, zg, gh))
+        old = '''    float hb = w * 0.5; float ht = w * 0.5;
+    if (y_bot > wh) hb = w * 0.5 * clamp(1.0 - (y_bot - wh) / %s, 0.0, 1.0);
+    if (y_top > wh) ht = w * 0.5 * clamp(1.0 - (y_top - wh) / %s, 0.0, 1.0);''' % (gh, gh)
+        assert old in src, old
+        new = '''    float hb = zr_wall_hw(cvw, y_bot, %s, wh, %s);   // 16 October 2026 : row ends follow the curved roof line
+    float ht = zr_wall_hw(cvw, y_top, %s, wh, %s);''' % (zg, gh, zg, gh)
+        src = src.replace(old, new)
+    marker = 'float w = ch("../../width");'
+    assert marker in src
+    return src.replace(marker, WALL + '\n' + marker, 1)
+
+def patch_armature(src):
+    # 1. height field + curved rafter
+    old_raf = '''    int r_l = addprim(0, "polyline");
+    addvertex(0, r_l, add_pt(0, set(x_left, wh - timber_drop, z), SC_RAFTER));
+    addvertex(0, r_l, add_pt(0, set(0, peak_y, z), SC_RAFTER));
+    int r_r = addprim(0, "polyline");
+    addvertex(0, r_r, add_pt(0, set(x_right, wh - timber_drop, z), SC_RAFTER));
+    addvertex(0, r_r, add_pt(0, set(0, peak_y, z), SC_RAFTER));'''
+    assert old_raf in src
+    new_raf = '''    for (int sd = 0; sd < 2; ++sd) {
+        float sgx = (sd == 0) ? x_left : x_right;
+        int r_s = addprim(0, "polyline");
+        for (int i = 0; i <= nraf; ++i) {
+            float t = float(i) / float(nraf);
+            float rx = lerp(sgx, 0.0, t);
+            float ry = lerp(wh - timber_drop, peak_y, t) + zr_dy(cva, rx, z);
+            addvertex(0, r_s, add_pt(0, set(rx, ry, z), SC_RAFTER));
+        }
+    }'''
+    src = src.replace(old_raf, new_raf)
+    # 2. apex height, king post, king drop
+    old = 'float peak_y = wh + gh - timber_drop;'
+    assert old in src
+    src = src.replace(old, 'float peak_y = wh + gh - timber_drop;\n    float peak_eff = peak_y + zr_dy(cva, 0.0, z);   // apex of the curved rafter')
+    old = 'addvertex(0, p_king, add_pt(0, set(0, peak_y, zp), SC_POST));'
+    assert old in src
+    src = src.replace(old, 'addvertex(0, p_king, add_pt(0, set(0, peak_eff, zp), SC_POST));')
+    old = 'float king_drop = max(0.2, peak_y - y_king);'
+    assert old in src
+    src = src.replace(old, 'float king_drop = max(0.2, peak_eff - y_king);')
+    old = 'addvertex(0, p_king, add_pt(0, set(0, wh + fgh + cross_h, zp), SC_POST));'
+    assert old in src
+    src = src.replace(old, 'addvertex(0, p_king, add_pt(0, set(0, wh + fgh + zr_dy(cva, 0.0, z_front) + cross_h, zp), SC_POST));')
+    old = 'float crossbar_y = wh + fgh + cross_h * 0.68;'
+    assert old in src
+    src = src.replace(old, 'float crossbar_y = wh + fgh + zr_dy(cva, 0.0, z_front) + cross_h * 0.68;')
+    # 3. arms stop at the curved rafter underside
+    old = 'void build_arm(int geo; float side; float y_king; float R; float th; int nseg; float z; float peak_y; float slope; float dstop; float sc) {'
+    assert old in src
+    src = src.replace(old, 'void build_arm(float cva[]; int geo; float side; float y_king; float R; float th; int nseg; float z; float peak_y; float slope; float dstop; float sc) {')
+    old = '''    float sl = sqrt(1.0 + slope * slope);'''
+    assert old in src
+    src = src.replace(old, '''    float sl = 1.0;''')
+    old = '        float perp = (peak_y - slope * abs(x) - y) / sl;'
+    assert old in src
+    src = src.replace(old, '''        float ax_ = abs(x);
+        float ry_ = peak_y - slope * ax_ + zr_dy(cva, x, z);
+        float m_ = -slope + (zr_dy(cva, ax_ + 0.01, z) - zr_dy(cva, max(ax_ - 0.01, 0.0), z)) / 0.02;
+        sl = sqrt(1.0 + m_ * m_);
+        float perp = (ry_ - y) / sl;''')
+    src = src.replace('build_arm(0, -1.0, y_king, R, theta, 12, za, peak_y, slope, D_STOP, SC_ARM);', 'build_arm(cva, 0, -1.0, y_king, R, theta, 12, za, peak_y, slope, D_STOP, SC_ARM);')
+    src = src.replace('build_arm(0,  1.0, y_king, R, theta, 12, za, peak_y, slope, D_STOP, SC_ARM);', 'build_arm(cva, 0,  1.0, y_king, R, theta, 12, za, peak_y, slope, D_STOP, SC_ARM);')
+    assert 'build_arm(cva, 0, -1.0' in src and 'build_arm(cva, 0,  1.0' in src
+    # 4. setup after the gables arrays
+    old = 'float gables_h[] = array(fgh, rgh);'
+    assert old in src
+    setup = '''float cva[] = array(w * 0.5, (l + 2.0 * ch("../../roof_gable_overhang")) * 0.5, chf("../curve_slope"), chf("../curve_slope_bias"), chf("../curve_ridge"), chf("../curve_ridge_power"));
+int curved = (abs(cva[2]) > 0.000001 || abs(cva[4]) > 0.000001);
+int nraf = curved ? max(1, chi("../curve_slices_u")) : 1;
+'''
+    src = src.replace(old, setup + old)
+    marker = 'float SC_RAFTER = 1.0;'
+    assert marker in src
+    first = src.index('\n', src.index('float win_top')) + 1
+    return src[:first] + DY + src[first:]
+
+CROSS_HELPER = r'''
+# 16 October 2026 : roof height field in Python (same function as the VEX zr_dy) and the REAL rafter axes (chord of the first and last curve segment), so the cropped ends stay on the curved beam. FR : axes reels des chevrons courbes.
+import math
+def _zr_dy(c, x, z):
+    u = min(max(1.0 - abs(x) / max(c[0], 1e-6), 0.0), 1.0)
+    k = math.log(0.5) / math.log(c[3]) if 0.001 < c[3] < 0.999 else 1.0
+    ub = u ** k
+    zn = min(abs(z) / max(c[1], 1e-6), 1.0)
+    zt = 1.0 - zn ** max(c[5], 0.01)
+    return -c[2] * 4.0 * ub * (1.0 - ub) - c[4] * zt * u
+def rafter_axes(left, gz):
+    church = hou.pwd().parent(); a = church.node('Component_Armature')
+    w = a.parm('width').eval(); wh = a.parm('wall_height').eval()
+    gh = a.parm('front_gable_height').eval() if gz > 0 else a.parm('rear_gable_height').eval()
+    half = a.parm('beam_size').eval() * 0.5
+    c = (w * 0.5, (a.parent().parm('length').eval() + 2.0 * a.parent().parm('roof_gable_overhang').eval()) * 0.5, a.parm('curve_slope').eval(), a.parm('curve_slope_bias').eval(), a.parm('curve_ridge').eval(), a.parm('curve_ridge_power').eval())
+    slope = 2.0 * gh / w
+    drop = half * math.sqrt(1.0 + slope * slope) + 0.005
+    peak = wh + gh - drop
+    ry = lambda x: peak - slope * abs(x) + _zr_dy(c, x, gz)
+    curved = abs(c[2]) > 1e-6 or abs(c[4]) > 1e-6
+    nseg = max(1, a.parm('curve_slices_u').eval()) if curved else 1
+    D = (w * 0.5) / nseg
+    s = -1.0 if left else 1.0
+    tip = (-s * D, ry(0.0) - ry(s * D))            # from the last segment start to the apex
+    low = (-s * D, ry(s * w * 0.5 - s * D) - ry(s * w * 0.5))   # from the foot toward the apex
+    nrm = lambda v: (v[0] / math.hypot(*v), v[1] / math.hypot(*v))
+    return nrm(tip), nrm(low)
+'''
+
+def patch_cross(src):
+    marker = 'win = hou.node(hou.pwd().parent().path()'
+    assert marker in src
+    src = src.replace(marker, CROSS_HELPER + '\n' + marker, 1)
+    old = '''    n = (sx * sx + sy * sy) ** 0.5; dx, dy = sx / n, sy / n          # beam axis in the gable plane (rising toward the apex). FR : axe de la poutre.
+    ax = (dx, dy) if left else (-dx, dy)
+    def to_cut(p, ax=ax, left=left):'''
+    assert old in src
+    src = src.replace(old, '''    ax_tip, ax_low = rafter_axes(left, (lo[2] + hi[2]) / 2.0)   # 16 October 2026 : real axes of the curved beam. FR : axes reels.
+    def to_cut(p, ax=ax_tip, left=left):''')
+    old = '    def to_post(p, ax=ax, left=left):'
+    assert old in src
+    src = src.replace(old, '    def to_post(p, ax=ax_low, left=left):')
+    return src
+
+def run():
+    for node, key in ((FAC.node('build_siding'), 'zr_orig_snippet'), (ARM.node('generate_gables_and_arches'), 'zr_orig_snippet')):
+        if not node.userData(key):
+            node.setUserData(key, node.parm('snippet').eval())
+    cf = CHURCH.node('cross_fix')
+    if not cf.userData('zr_orig_python'):
+        cf.setUserData('zr_orig_python', cf.parm('python').eval())
+    FAC.node('build_siding').parm('snippet').set(patch_facade(FAC.node('build_siding').userData('zr_orig_snippet')))
+    ARM.node('generate_gables_and_arches').parm('snippet').set(patch_armature(ARM.node('generate_gables_and_arches').userData('zr_orig_snippet')))
+    cf.parm('python').set(patch_cross(cf.userData('zr_orig_python')))
+    out = {}
+    for n in (FAC.node('build_siding'), ARM.node('generate_gables_and_arches'), ARM, FAC, cf, CHURCH.node('OUT_church')):
+        try:
+            n.cook(force=True); out[n.path()] = 'ok'
+        except hou.OperationFailed:
+            out[n.path()] = n.errors()
+    return out
+
+result = run()

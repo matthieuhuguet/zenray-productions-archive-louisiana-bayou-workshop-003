@@ -1,0 +1,81 @@
+{
+  "component": "Grass_System",
+  "version": "v001",
+  "label": "herbe-procedurale-recuperee",
+  "timestamp": "2026-09-19 17:40:07",
+  "saved_at_iso": "2026-09-19T17:40:07+02:00",
+  "src_hip": "/Users/zenray/Create/Build/Productions/ZenRayHoudini/LouisianaBayou/LouisianaBayou.hiplc",
+  "node_path": "/obj/Grass_System",
+  "children": [
+    {
+      "name": "om_ground",
+      "type": "object_merge"
+    },
+    {
+      "name": "ground_normals",
+      "type": "normal"
+    },
+    {
+      "name": "density_focus",
+      "type": "attribwrangle"
+    },
+    {
+      "name": "scatter",
+      "type": "scatter::2.0"
+    },
+    {
+      "name": "om_blockers",
+      "type": "object_merge"
+    },
+    {
+      "name": "exclude_under_assets",
+      "type": "attribwrangle"
+    },
+    {
+      "name": "base_attributes",
+      "type": "attribwrangle"
+    },
+    {
+      "name": "clumping",
+      "type": "attribwrangle"
+    },
+    {
+      "name": "build_blades",
+      "type": "attribwrangle"
+    },
+    {
+      "name": "anim_wind",
+      "type": "attribwrangle"
+    },
+    {
+      "name": "color_blades",
+      "type": "attribwrangle"
+    },
+    {
+      "name": "foliage_normals",
+      "type": "attribwrangle"
+    },
+    {
+      "name": "OUT_GrassSystem",
+      "type": "null"
+    }
+  ],
+  "external_inputs": [],
+  "hip_file": "graph.hiplc",
+  "proof_geo": {
+    "points": 403746,
+    "prims": 173034,
+    "bbox": [
+      [
+        -55.06589126586914,
+        -1.1712265014648438,
+        -55.1455078125
+      ],
+      [
+        55.17294692993164,
+        18.91797637939453,
+        55.17660903930664
+      ]
+    ]
+  }
+}

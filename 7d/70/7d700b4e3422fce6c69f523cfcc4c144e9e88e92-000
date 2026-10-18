@@ -1,0 +1,358 @@
+{
+  "component": "Cop_M_PeelingWhiteWood_01",
+  "version": "v001",
+  "label": "texturing_start",
+  "timestamp": "2026-09-18 11:27:16",
+  "src_hip": "/Users/zenray/Create/Build/Productions/ZenRayHoudini/LouisianaBayou/LouisianaBayou.hiplc",
+  "node_path": "/obj/Cop_M_PeelingWhiteWood_01",
+  "final_node": "preview_01_bois_peint",
+  "proof_res": 1024,
+  "children": [
+    {
+      "name": "size_2k",
+      "type": "constant"
+    },
+    {
+      "name": "wood_grain",
+      "type": "fractalnoise"
+    },
+    {
+      "name": "peel_patches",
+      "type": "cellularnoise"
+    },
+    {
+      "name": "peel_crackle",
+      "type": "fractalnoise"
+    },
+    {
+      "name": "peel_mask",
+      "type": "blend"
+    },
+    {
+      "name": "color_raw_wood",
+      "type": "constant"
+    },
+    {
+      "name": "color_white_paint",
+      "type": "constant"
+    },
+    {
+      "name": "basecolor_blend",
+      "type": "blend"
+    },
+    {
+      "name": "rough_wood",
+      "type": "constant"
+    },
+    {
+      "name": "rough_paint",
+      "type": "constant"
+    },
+    {
+      "name": "roughness_blend",
+      "type": "blend"
+    },
+    {
+      "name": "metalness_zero",
+      "type": "constant"
+    },
+    {
+      "name": "height_blend",
+      "type": "blend"
+    },
+    {
+      "name": "normal_from_height",
+      "type": "heighttonormal"
+    },
+    {
+      "name": "preview_01_bois_peint",
+      "type": "previewmaterial"
+    },
+    {
+      "name": "export_basecolor_test",
+      "type": "rop_image"
+    },
+    {
+      "name": "peel_large_flakes",
+      "type": "fractalnoise"
+    },
+    {
+      "name": "peel_small_crackle",
+      "type": "fractalnoise"
+    },
+    {
+      "name": "peel_noise_combine",
+      "type": "blend"
+    },
+    {
+      "name": "peel_threshold",
+      "type": "remap"
+    },
+    {
+      "name": "l6_edge_detect",
+      "type": "edgedetect"
+    },
+    {
+      "name": "l6_edge_blur",
+      "type": "blur"
+    },
+    {
+      "name": "l6_edge_curl",
+      "type": "remap"
+    },
+    {
+      "name": "l5_chalk_noise",
+      "type": "fractalnoise"
+    },
+    {
+      "name": "l5_chalk_masked",
+      "type": "blend"
+    },
+    {
+      "name": "l5_chalk_remap",
+      "type": "remap"
+    },
+    {
+      "name": "h_add_paint",
+      "type": "blend"
+    },
+    {
+      "name": "h_add_curl",
+      "type": "blend"
+    },
+    {
+      "name": "final_height",
+      "type": "blend"
+    },
+    {
+      "name": "l6_edge_curl_masked",
+      "type": "blend"
+    },
+    {
+      "name": "l2_macro_warp",
+      "type": "fractalnoise"
+    },
+    {
+      "name": "l2_fiber_bundles",
+      "type": "fractalnoise"
+    },
+    {
+      "name": "l2_fiber_micro",
+      "type": "fractalnoise"
+    },
+    {
+      "name": "l2_fibers_mult",
+      "type": "blend"
+    },
+    {
+      "name": "l2_fibers_wavy",
+      "type": "distort"
+    },
+    {
+      "name": "l2_fiber_chatter",
+      "type": "fractalnoise"
+    },
+    {
+      "name": "l2_fibers_tactile",
+      "type": "blend"
+    },
+    {
+      "name": "l2_grain_depth",
+      "type": "remap"
+    },
+    {
+      "name": "l4_cathedral_wrangle",
+      "type": "wrangle"
+    },
+    {
+      "name": "l4_cathedral_depth",
+      "type": "remap"
+    },
+    {
+      "name": "l4_cathedral_dist_knots",
+      "type": "distort"
+    },
+    {
+      "name": "l4_cathedral_knots_depth",
+      "type": "remap"
+    },
+    {
+      "name": "l4_wood_full",
+      "type": "blend"
+    },
+    {
+      "name": "l3_knot_warp",
+      "type": "wrangle"
+    },
+    {
+      "name": "l3_fibers_dist",
+      "type": "distort"
+    },
+    {
+      "name": "l3_grain_depth",
+      "type": "remap"
+    },
+    {
+      "name": "l3_planks_grained",
+      "type": "blend"
+    },
+    {
+      "name": "l3_knot_relief",
+      "type": "wrangle"
+    },
+    {
+      "name": "l3_wood_knots_substrate",
+      "type": "blend"
+    },
+    {
+      "name": "test_p_bounds",
+      "type": "wrangle"
+    },
+    {
+      "name": "uv_checker_file",
+      "type": "file"
+    },
+    {
+      "name": "preview_basecolor_switch",
+      "type": "blend"
+    },
+    {
+      "name": "base_wood_plate",
+      "type": "constant"
+    },
+    {
+      "name": "test_perfect_tile",
+      "type": "fractalnoise"
+    },
+    {
+      "name": "test_perfect_tile1",
+      "type": "fractalnoise"
+    },
+    {
+      "name": "test_wrap_norm",
+      "type": "opencl"
+    },
+    {
+      "name": "test_wrap_norm1",
+      "type": "opencl"
+    },
+    {
+      "name": "export_height_test",
+      "type": "rop_image"
+    },
+    {
+      "name": "quixel_basecolor",
+      "type": "file"
+    },
+    {
+      "name": "quixel_roughness",
+      "type": "file"
+    },
+    {
+      "name": "quixel_normal",
+      "type": "file"
+    },
+    {
+      "name": "quixel_ao",
+      "type": "file"
+    },
+    {
+      "name": "quixel_displacement",
+      "type": "file"
+    },
+    {
+      "name": "preview_quixel_pbr",
+      "type": "previewmaterial"
+    },
+    {
+      "name": "quixel_hue_adjust",
+      "type": "hsv"
+    },
+    {
+      "name": "l1_plank_ramp",
+      "type": "ramp"
+    },
+    {
+      "name": "l1_seam_wobble",
+      "type": "fractalnoise"
+    },
+    {
+      "name": "l1_planks",
+      "type": "distort"
+    },
+    {
+      "name": "l7_paint_height",
+      "type": "remap"
+    },
+    {
+      "name": "l7_zone",
+      "type": "remap"
+    },
+    {
+      "name": "l7_paint_zoned",
+      "type": "blend"
+    },
+    {
+      "name": "l7_wood_signed",
+      "type": "remap"
+    },
+    {
+      "name": "l7_wood_zoned",
+      "type": "blend"
+    },
+    {
+      "name": "l7_base_wood",
+      "type": "blend"
+    },
+    {
+      "name": "l7_curl_zoned",
+      "type": "blend"
+    },
+    {
+      "name": "l7_micro_zoned",
+      "type": "blend"
+    },
+    {
+      "name": "l7_add_micro",
+      "type": "blend"
+    },
+    {
+      "name": "l7_gate",
+      "type": "wrangle"
+    },
+    {
+      "name": "l7_mask_gated",
+      "type": "blend"
+    },
+    {
+      "name": "l7_flake_thresh",
+      "type": "remap"
+    },
+    {
+      "name": "l7_crackle_grade",
+      "type": "remap"
+    },
+    {
+      "name": "l7_film_graded",
+      "type": "blend"
+    },
+    {
+      "name": "l7_paint_soft",
+      "type": "blur"
+    },
+    {
+      "name": "l7_paint_core",
+      "type": "remap"
+    },
+    {
+      "name": "l7_rim",
+      "type": "blend"
+    }
+  ],
+  "external_inputs": [],
+  "hip_file": "graph.hiplc",
+  "proof_file": "proof.png",
+  "levels": {
+    "error": "[Errno 2] No such file or directory: '/Users/zenray/Create/Build/Productions/ZenRayHoudini/LouisianaBayou/snapshots/LouisianaBayou/Cop_M_PeelingWhiteWood_01/v001_texturing_start/proof.png'"
+  }
+}

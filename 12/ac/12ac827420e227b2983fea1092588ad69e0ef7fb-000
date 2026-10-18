@@ -1,0 +1,51 @@
+
+float w = ch("../width");
+float l = ch("../length");
+float wh = ch("../wall_height");
+float bs = ch("../beam_size");
+
+float z_front = l * 0.5;
+float z_rear = -l * 0.5;
+float x_left = -w * 0.5;
+float x_right = w * 0.5;
+
+// Base sill points elevated by half beam size so bottom face touches ground at Y = 0.0
+float y_base = bs * 0.5;
+
+int b_fl = addpoint(0, set(x_left, 0.0, z_front));   // 9 October 2026 : corner post runs down to the ground and is the only geometry at the corner
+int b_fr = addpoint(0, set(x_right, 0.0, z_front));   // 9 October 2026 : corner post runs down to the ground and is the only geometry at the corner
+int b_rl = addpoint(0, set(x_left, 0.0, z_rear));   // 9 October 2026 : corner post runs down to the ground and is the only geometry at the corner
+int b_rr = addpoint(0, set(x_right, 0.0, z_rear));   // 9 October 2026 : corner post runs down to the ground and is the only geometry at the corner
+
+// 9 October 2026 : sill ends overshoot by bs/2 so the corner closes square, no V notch at the foot of the corner posts.
+float ov = -bs * 0.5;   // 9 October 2026 : sills stop flush on the faces of the corner post (cut), nothing overshoots
+int s_fl_x = addpoint(0, set(x_left - ov, y_base, z_front));
+int s_fr_x = addpoint(0, set(x_right + ov, y_base, z_front));
+int s_rl_x = addpoint(0, set(x_left - ov, y_base, z_rear));
+int s_rr_x = addpoint(0, set(x_right + ov, y_base, z_rear));
+int s_fl_z = addpoint(0, set(x_left, y_base, z_front + ov));
+int s_rl_z = addpoint(0, set(x_left, y_base, z_rear - ov));
+int s_fr_z = addpoint(0, set(x_right, y_base, z_front + ov));
+int s_rr_z = addpoint(0, set(x_right, y_base, z_rear - ov));
+
+// Top wall eave points (Y = wall_height)
+int e_fl = addpoint(0, set(x_left, wh, z_front));
+int e_fr = addpoint(0, set(x_right, wh, z_front));
+int e_rl = addpoint(0, set(x_left, wh, z_rear));
+int e_rr = addpoint(0, set(x_right, wh, z_rear));
+
+// Base perimeter lines (all 4 sides at ground)
+int p_bf = addprim(0, "polyline"); addvertex(0, p_bf, s_fl_x); addvertex(0, p_bf, s_fr_x);
+int p_br = addprim(0, "polyline"); addvertex(0, p_br, s_rl_x); addvertex(0, p_br, s_rr_x);
+int p_bl = addprim(0, "polyline"); addvertex(0, p_bl, s_fl_z); addvertex(0, p_bl, s_rl_z);
+int p_brgt = addprim(0, "polyline"); addvertex(0, p_brgt, s_fr_z); addvertex(0, p_brgt, s_rr_z);
+
+// 4 Vertical corner posts
+int p_pfl = addprim(0, "polyline"); addvertex(0, p_pfl, b_fl); addvertex(0, p_pfl, e_fl);
+int p_pfr = addprim(0, "polyline"); addvertex(0, p_pfr, b_fr); addvertex(0, p_pfr, e_fr);
+int p_prl = addprim(0, "polyline"); addvertex(0, p_prl, b_rl); addvertex(0, p_prl, e_rl);
+int p_prr = addprim(0, "polyline"); addvertex(0, p_prr, b_rr); addvertex(0, p_prr, e_rr);
+
+// Top longitudinal eave plate beams (left & right only)
+int p_el = addprim(0, "polyline"); addvertex(0, p_el, e_fl); addvertex(0, p_el, e_rl);
+int p_ergt = addprim(0, "polyline"); addvertex(0, p_ergt, e_fr); addvertex(0, p_ergt, e_rr);

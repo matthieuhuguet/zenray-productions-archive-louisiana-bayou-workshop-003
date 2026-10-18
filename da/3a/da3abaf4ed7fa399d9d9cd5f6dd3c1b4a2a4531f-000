@@ -1,0 +1,296 @@
+# 16 October 2026 : STEP 2, Component_Roof builds its boards ALONG the roof height field (no lattice). EN: decking, rafters, barge boards, shingles, ridge cap and the ridge mitre cut all read dy(x, z) from the same VEX struct ; every curved board is a clean quad grid, the rafters are cropped at the post plane by the generator. Idempotent : the original snippets are kept in the node user data key `zr_roof_orig_<node>` the first time. FR : la planche suit le champ de hauteur, topologie propre, aucune deformation apres coup.
+import hou
+
+ROOF = hou.node('/obj/Church/Component_Roof')
+
+COMMON = r'''
+// 16 October 2026 : ROOF HEIGHT FIELD. EN: dy(x, z) = - slope_sag * profile(u) - ridge_sag * ridge(z) * u, u = 1 - |x| / half_width (0 at the eave, 1 at the ridge), ridge(z) = 1 - |z / half_length| ^ power. Every board of the roof line is built along it. FR : champ de hauteur du toit, chaque planche le suit.
+// curve array : 0 half width, 1 half length, 2 slope sag, 3 sag position, 4 ridge dip, 5 ridge power (VEX structs are not accepted in a wrangle snippet, so the field is a float array).
+float zr_dy(float c[]; float x; float z) {
+    float u = clamp(1.0 - abs(x) / max(c[0], 0.000001), 0.0, 1.0);
+    float k = (c[3] > 0.001 && c[3] < 0.999) ? log(0.5) / log(c[3]) : 1.0;
+    float ub = pow(u, k);
+    float zn = min(abs(z) / max(c[1], 0.000001), 1.0);
+    float zt = 1.0 - pow(zn, max(c[5], 0.01));
+    return -c[2] * 4.0 * ub * (1.0 - ub) - c[4] * zt * u;
+}
+float zr_ddx(float c[]; float x; float z) { float e = 0.01; return (zr_dy(c, x + e, z) - zr_dy(c, x - e, z)) / (2.0 * e); }
+float zr_ddz(float c[]; float x; float z) { float e = 0.05; return (zr_dy(c, x, z + e) - zr_dy(c, x, z - e)) / (2.0 * e); }
+'''
+
+PRISM = r'''
+void zr_quad(int side; int a; int b; int c; int d; string grp; int pid) {
+    int pr = (side == 0) ? addprim(0, "poly", a, b, c, d) : addprim(0, "poly", d, c, b, a);
+    setprimgroup(0, grp, pr, 1);
+    setprimattrib(0, "piece_id", pr, pid + side * 10000);
+}
+// pts : 0 ridge top, 1 eave top, 2 eave bottom, 3 ridge bottom (same order as the straight prism). Both halves are built, the right one mirrored with reversed winding. clipx > 0 crops the eave end by the vertical plane x = -clipx.
+void zr_prism(float c[]; vector2 pts[]; float z0; float z1; int nu; int nz; float clipx; string grp; int pid) {
+    vector2 te = pts[1]; vector2 tr = pts[0]; vector2 be = pts[2]; vector2 br = pts[3];
+    if (clipx > 0.0) {
+        if (te.x < -clipx) te = lerp(te, tr, (-clipx - te.x) / (tr.x - te.x));
+        if (be.x < -clipx) be = lerp(be, br, (-clipx - be.x) / (br.x - be.x));
+    }
+    int stride = nz + 1;
+    for (int side = 0; side < 2; ++side) {
+        float sg = (side == 0) ? 1.0 : -1.0;
+        int top[]; int bot[];
+        resize(top, (nu + 1) * stride); resize(bot, (nu + 1) * stride);
+        for (int i = 0; i <= nu; ++i) {
+            float t = float(i) / float(nu);
+            vector2 a = lerp(te, tr, t); vector2 b = lerp(be, br, t);
+            for (int j = 0; j <= nz; ++j) {
+                float z = lerp(z0, z1, float(j) / float(nz));
+                top[i * stride + j] = addpoint(0, set(sg * a.x, a.y + zr_dy(c, a.x, z), z));
+                bot[i * stride + j] = addpoint(0, set(sg * b.x, b.y + zr_dy(c, b.x, z), z));
+            }
+        }
+        for (int j = 0; j < nz; ++j) {
+            for (int i = 0; i < nu; ++i) {
+                zr_quad(side, top[(i + 1) * stride + j], top[(i + 1) * stride + j + 1], top[i * stride + j + 1], top[i * stride + j], grp, pid);
+                zr_quad(side, bot[i * stride + j], bot[i * stride + j + 1], bot[(i + 1) * stride + j + 1], bot[(i + 1) * stride + j], grp, pid);
+            }
+            zr_quad(side, top[j], top[j + 1], bot[j + 1], bot[j], grp, pid);
+            zr_quad(side, bot[nu * stride + j], bot[nu * stride + j + 1], top[nu * stride + j + 1], top[nu * stride + j], grp, pid);
+        }
+        for (int i = 0; i < nu; ++i) {
+            zr_quad(side, top[(i + 1) * stride], top[i * stride], bot[i * stride], bot[(i + 1) * stride], grp, pid);
+            zr_quad(side, top[(i + 1) * stride + nz], bot[(i + 1) * stride + nz], bot[i * stride + nz], top[i * stride + nz], grp, pid);
+        }
+    }
+}
+'''
+
+STRUCTURE_MAIN = r'''
+// 16 October 2026 : the straight prism of the fascia board is kept (it lives at the eave where the field is zero).
+void make_symmetric_prism_z(vector pts[]; float z_start, z_end; string grp_name; int pid) {
+    int p_l[];
+    resize(p_l, 8);
+    for (int i = 0; i < 4; ++i) {
+        p_l[i]   = addpoint(0, set(pts[i].x, pts[i].y, z_start));
+        p_l[i+4] = addpoint(0, set(pts[i].x, pts[i].y, z_end));
+    }
+    int pr0 = addprim(0, "poly", p_l[0], p_l[4], p_l[5], p_l[1]);
+    int pr1 = addprim(0, "poly", p_l[1], p_l[5], p_l[6], p_l[2]);
+    int pr2 = addprim(0, "poly", p_l[2], p_l[6], p_l[7], p_l[3]);
+    int pr3 = addprim(0, "poly", p_l[3], p_l[7], p_l[4], p_l[0]);
+    int pr4 = addprim(0, "poly", p_l[0], p_l[1], p_l[2], p_l[3]);
+    int pr5 = addprim(0, "poly", p_l[4], p_l[7], p_l[6], p_l[5]);
+    int prims_l[] = array(pr0, pr1, pr2, pr3, pr4, pr5);
+    foreach (int pr; prims_l) {
+        setprimgroup(0, grp_name, pr, 1);
+        setprimattrib(0, "piece_id", pr, pid);
+    }
+    int p_r[];
+    resize(p_r, 8);
+    for (int i = 0; i < 4; ++i) {
+        p_r[i]   = addpoint(0, set(-pts[i].x, pts[i].y, z_start));
+        p_r[i+4] = addpoint(0, set(-pts[i].x, pts[i].y, z_end));
+    }
+    int r0 = addprim(0, "poly", p_r[1], p_r[5], p_r[4], p_r[0]);
+    int r1 = addprim(0, "poly", p_r[2], p_r[6], p_r[5], p_r[1]);
+    int r2 = addprim(0, "poly", p_r[3], p_r[7], p_r[6], p_r[2]);
+    int r3 = addprim(0, "poly", p_r[0], p_r[4], p_r[7], p_r[3]);
+    int r4 = addprim(0, "poly", p_r[3], p_r[2], p_r[1], p_r[0]);
+    int r5 = addprim(0, "poly", p_r[5], p_r[6], p_r[7], p_r[4]);
+    int prims_r[] = array(r0, r1, r2, r3, r4, r5);
+    foreach (int pr; prims_r) {
+        setprimgroup(0, grp_name, pr, 1);
+        setprimattrib(0, "piece_id", pr, pid + 10000);
+    }
+}
+float w = ch("../width");
+float l = ch("../length");
+float wh = ch("../wall_height");
+float gh = ch("../gable_height");
+float peak_y = wh + gh;
+
+float eave_oh = ch("../eave_overhang");
+float gable_oh = ch("../gable_overhang");
+float deck_th = ch("../decking_thickness");
+
+float total_len = l + gable_oh * 2.0;
+float half_w = w * 0.5 + eave_oh;
+float slope_len = sqrt(half_w * half_w + gh * gh);
+float pitch_angle = atan2(gh, half_w);
+float cos_p = cos(pitch_angle);
+float sin_p = sin(pitch_angle);
+
+vector N = set(-sin_p, cos_p, 0.0);
+vector T = set( cos_p, sin_p, 0.0);
+
+float cv[] = array(half_w, total_len * 0.5, chf("../curve_slope"), chf("../curve_slope_bias"), chf("../curve_ridge"), chf("../curve_ridge_power"));
+int curved = (abs(cv[2]) > 0.000001 || abs(cv[4]) > 0.000001);
+int nu = curved ? max(1, chi("../curve_slices_u")) : 1;
+int nz = curved ? max(1, chi("../curve_slices_z")) : 1;
+float clipx = chf("../rake_inner_x");
+
+int pid = 100;
+
+// 1. Decking slopes : a curved grid along the field
+{
+    vector2 d_pts[];
+    resize(d_pts, 4);
+    d_pts[0] = set(0.0, peak_y);
+    d_pts[1] = set(-half_w, wh);
+    vector2 below = set(-N.x, -N.y) * deck_th;
+    d_pts[2] = d_pts[1] + below;
+    d_pts[3] = set(0.0, peak_y - deck_th / cos_p);
+    zr_prism(cv, d_pts, -total_len * 0.5, total_len * 0.5, nu, nz, 0.0, "group_decking", pid++);
+}
+
+// 2. Fascia board at the eave (straight, the field is zero there)
+float fascia_h = ch("../fascia_depth");
+float fascia_th = ch("../fascia_thickness");
+{
+    vector f_pts[];
+    resize(f_pts, 4);
+    f_pts[0] = set(-half_w, wh, 0.0) - N * deck_th;
+    f_pts[1] = f_pts[0] - N * fascia_h;
+    f_pts[2] = f_pts[1] + T * fascia_th;
+    f_pts[3] = f_pts[0] + T * fascia_th;
+    make_symmetric_prism_z(f_pts, -total_len * 0.5, total_len * 0.5, "group_fascia", pid++);
+}
+
+// 3. Barge boards glued under the roof, following the curved underside (9 October 2026 v3 : outer face 4 mm behind the roof edge)
+float barge_w = 0.18;
+float barge_th = 0.030;
+float barge_back = 0.004;
+float z_edge = l * 0.5 + gable_oh;
+float z_gables[] = array(z_edge - barge_back - barge_th * 0.5, -z_edge + barge_back + barge_th * 0.5);
+
+foreach (float z_pos; z_gables) {
+    vector2 b_pts[];
+    resize(b_pts, 4);
+    b_pts[0] = set(0.0, peak_y - deck_th / cos_p);
+    b_pts[1] = set(-half_w, wh) + set(-N.x, -N.y) * deck_th;
+    b_pts[2] = b_pts[1] + set(-N.x, -N.y) * barge_w;
+    b_pts[3] = set(0.0, b_pts[0].y - barge_w / cos_p);
+    zr_prism(cv, b_pts, z_pos - barge_th * 0.5, z_pos + barge_th * 0.5, nu, 1, 0.0, "group_bargeboard", pid++);
+}
+
+// 4. Inner rafters, curved, cropped flat against the vertical plane of the corner post by the generator (clipx)
+float rafter_w = 0.065;
+float rafter_d = 0.075;
+float beam_z_positions[] = array(l * 0.5, -l * 0.5);
+
+foreach (float z_beam; beam_z_positions) {
+    vector2 r_pts[];
+    resize(r_pts, 4);
+    r_pts[0] = set(0.0, peak_y - deck_th / cos_p);
+    r_pts[1] = set(-half_w, wh) + set(-N.x, -N.y) * deck_th;
+    r_pts[2] = set(-half_w, wh) + set(-N.x, -N.y) * (deck_th + rafter_d);
+    r_pts[3] = set(0.0, peak_y - (deck_th + rafter_d) / cos_p);
+    zr_prism(cv, r_pts, z_beam - rafter_w * 0.5, z_beam + rafter_w * 0.5, nu, 1, clipx, "group_rafters", pid++);
+}
+'''
+
+def patch_shingles(src):
+    assert 'void make_symmetric_wedge_shingle(vector center; float L, W, T_butt, T_head; matrix3 rot; string grp_name; int pid) {' in src
+    src = src.replace('void make_symmetric_wedge_shingle(vector center; float L, W, T_butt, T_head; matrix3 rot; string grp_name; int pid) {', 'void make_symmetric_wedge_shingle(vector center; float L, W, T_butt, T_head; matrix3 rot; string grp_name; int pid; float zc) {')
+    assert src.count('setprimattrib(0, "piece_id", pr, pid);') == 1 and src.count('setprimattrib(0, "piece_id", pr, pid + 10000);') == 1
+    src = src.replace('setprimattrib(0, "piece_id", pr, pid);', 'setprimattrib(0, "piece_id", pr, pid);\n        setprimattrib(0, "zc", pr, zc);')
+    src = src.replace('setprimattrib(0, "piece_id", pr, pid + 10000);', 'setprimattrib(0, "piece_id", pr, pid + 10000);\n        setprimattrib(0, "zc", pr, zc);')
+    marker = 'float ref_cols = ch("../width_ref_cols");'
+    assert marker in src
+    cvblock = '''
+float cv[] = array(half_w, total_len * 0.5, chf("../curve_slope"), chf("../curve_slope_bias"), chf("../curve_ridge"), chf("../curve_ridge_power"));
+float tan_p = tan(pitch_angle);
+'''
+    line_end = src.index(marker)
+    line_end = src.index('\n', line_end) + 1
+    src = src[:line_end] + cvblock + src[line_end:]
+    a = src.index('        vector pos = eave_l + dir_up_l')
+    bmark = 'make_symmetric_wedge_shingle(pos, j_len, j_width, j_thick_butt, j_thick_head, rot_sh, "group_shingles", pid++);'
+    b = src.index(bmark) + len(bmark)
+    newblock = '''        // 16 October 2026 : the shingle sits ON the curved surface. EN: position and frame come from the height field at the shingle centre (local pitch from d dy / d x, roll from d dy / d z), no deformation afterwards. FR : le bardeau est pose sur la surface courbe, repere local par le champ de hauteur.
+        float s_c = dist + j_len * 0.5 + eave_adjust;
+        vector ref_c = eave_l + dir_up_l * s_c;
+        float dyc = zr_dy(cv, ref_c.x, final_z);
+        float pl = atan(tan_p + zr_ddx(cv, ref_c.x, final_z));
+        float ang = pl - radians(sh_tilt);
+        vector nloc = set(-sin(pl), cos(pl), 0.0);
+        vector pos = ref_c + set(0.0, dyc, 0.0) + nloc * elev;
+        pos.z = final_z;
+        vector ex = set(cos(ang), sin(ang), 0.0);
+        vector ey0 = set(-sin(ang), cos(ang), 0.0);
+        vector ez = normalize(set(0.0, 0.0, 1.0) + ey0 * zr_ddz(cv, ref_c.x, final_z));
+        vector ey = normalize(cross(ez, ex));
+        float cy = cos(radians(j_yaw)); float sy = sin(radians(j_yaw));
+        vector ex2 = ex * cy + ez * sy;
+        vector ez2 = ez * cy - ex * sy;
+        matrix3 rot_sh = set(ex2.x, ex2.y, ex2.z, ey.x, ey.y, ey.z, ez2.x, ez2.y, ez2.z);
+
+        make_symmetric_wedge_shingle(pos, j_len, j_width, j_thick_butt, j_thick_head, rot_sh, "group_shingles", pid++, final_z);'''
+    src = src[:a] + newblock + src[b:]
+    # COMMON after the first comment line
+    first = src.index('\n') + 1
+    return src[:first] + COMMON + src[first:]
+
+CUT_RIDGE = r'''
+// 9 October 2026 : ridge cut. EN: each slope's shingles are cut flush by the TOP surface of the opposite slope, so the two slopes meet in a clean mitre with the real shingle thickness left visible. 16 October 2026 : the mitre plane follows the height field at the shingle centre (zc), so a dipping ridge stays a clean mitre. FR : coupe au faitage par le plan de la pente opposee, ce plan suit le champ de hauteur.
+''' + COMMON + r'''
+float wh = ch("../wall_height");
+float gh = ch("../gable_height");
+float peak_y = wh + gh;
+float half_w = ch("../width") * 0.5 + ch("../eave_overhang");
+float total_len = ch("../length") + ch("../gable_overhang") * 2.0;
+float cv[] = array(half_w, total_len * 0.5, chf("../curve_slope"), chf("../curve_slope_bias"), chf("../curve_ridge"), chf("../curve_ridge_power"));
+float zc = prim(0, "zc", @primnum);
+float p0 = atan2(gh, half_w);
+float dy_r = zr_dy(cv, 0.0, zc);
+float p = atan(tan(p0) + (zr_dy(cv, 0.0, zc) - zr_dy(cv, -0.02, zc)) / 0.02);   // local slope of the left surface at the ridge
+float off = 0.03;                                       // height of the shingle top above the deck at the ridge
+vector Q = set(0.0, peak_y + off + dy_r, 0.0);
+vector n_r = set(sin(p), cos(p), 0.0);                  // outward normal of the RIGHT slope
+vector dir = set(cos(p), sin(p), 0.0);                  // up-slope direction of the LEFT slope
+int mirror = (prim(0, "piece_id", @primnum) >= 10000);
+foreach (int vtx; primvertices(0, @primnum)) {
+    int pt = vertexpoint(0, vtx);
+    vector pos = point(0, "P", pt);
+    if (mirror) pos.x = -pos.x;
+    float d = dot(pos - Q, n_r);
+    if (d > 0.0) pos -= dir * (d / dot(n_r, dir));
+    if (mirror) pos.x = -pos.x;
+    setpointattrib(0, "P", pt, pos);
+}
+'''
+
+def patch_ridge_cap(src):
+    src = src.replace('void make_arched_ridge_tile(float z_center; float wing_w, tile_len, thickness; float pitch_angle, peak_y, h_sh; string grp_name; int pid) {', 'void make_arched_ridge_tile(float cv[]; float z_center; float wing_w, tile_len, thickness; float pitch_angle, peak_y, h_sh; string grp_name; int pid) {')
+    for nm, zexpr in (('pts_t0', 'z_center - hz'), ('pts_b0', 'z_center - hz'), ('pts_t1', 'z_center + hz'), ('pts_b1', 'z_center + hz')):
+        kind = 'prof_top' if '_t' in nm else 'prof_bot'
+        old = '%s[i] = addpoint(0, %s[i] + set(0, 0, %s));' % (nm, kind, zexpr)
+        assert old in src, old
+        new = '%s[i] = addpoint(0, set(%s[i].x, %s[i].y + zr_dy(cv, %s[i].x, %s), %s));' % (nm, kind, kind, kind, zexpr, zexpr)
+        src = src.replace(old, new)
+    old_call = 'make_arched_ridge_tile(z_pos, wing_w, tile_len, tile_th, pitch_angle, peak_y, h_sh, "group_ridge", pid++);'
+    assert old_call in src
+    src = src.replace(old_call, 'make_arched_ridge_tile(cv, z_pos, wing_w, tile_len, tile_th, pitch_angle, peak_y, h_sh, "group_ridge", pid++);')
+    marker = 'float ridge_step = total_len / float(ridge_count);'
+    assert marker in src
+    src = src.replace(marker, marker + '\nfloat cv[] = array(half_w, total_len * 0.5, chf("../curve_slope"), chf("../curve_slope_bias"), chf("../curve_ridge"), chf("../curve_ridge_power"));')
+    first = src.index('\n') + 1
+    return src[:first] + COMMON + src[first:]
+
+def run():
+    for key, nm in (('structure', 'build_roof_structure'), ('shingles', 'build_shingles'), ('cut', 'cut_ridge'), ('cap', 'build_ridge_cap')):
+        n = ROOF.node(nm)
+        ud = 'zr_roof_orig_' + nm
+        if not n.userData(ud):
+            n.setUserData(ud, n.parm('snippet').eval())
+    orig = {nm: ROOF.node(nm).userData('zr_roof_orig_' + nm) for nm in ('build_roof_structure', 'build_shingles', 'cut_ridge', 'build_ridge_cap')}
+    ROOF.node('build_roof_structure').parm('snippet').set('\n' + COMMON + PRISM + STRUCTURE_MAIN)
+    ROOF.node('build_shingles').parm('snippet').set(patch_shingles(orig['build_shingles']))
+    ROOF.node('cut_ridge').parm('snippet').set(CUT_RIDGE)
+    ROOF.node('build_ridge_cap').parm('snippet').set(patch_ridge_cap(orig['build_ridge_cap']))
+    errs = {}
+    for nm in ('build_roof_structure', 'build_shingles', 'cut_ridge', 'build_ridge_cap', 'OUT_roof_v002'):
+        n = ROOF.node(nm)
+        n.cook(force=True)
+        errs[nm] = (n.errors(), n.warnings())
+    return errs
+
+errs = run()
+g = ROOF.node('OUT_roof_v002').geometry()
+result = {"errs": errs, "pts": len(g.points()), "prims": len(g.prims()), "bbox": [round(x, 3) for x in list(g.boundingBox().minvec()) + list(g.boundingBox().maxvec())]}

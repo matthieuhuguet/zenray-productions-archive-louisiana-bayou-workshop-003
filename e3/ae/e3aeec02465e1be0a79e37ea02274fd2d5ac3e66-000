@@ -1,0 +1,164 @@
+{
+  "_comment": "11 October 2026 : every value of the Louisiana Bayou lookdev transfer Houdini -> Unreal (copied from the Cycles view /stage/PC_camera). FR : toutes les valeurs du transfert, une seule source.",
+  "fbx_dir": "/Users/zenray/Create/Build/Productions/ZenRayHoudini/LouisianaBayou/unreal_export",
+  "root": "/Game/ZenRayShards/LouisianaBayou",
+  "level": "/Game/ZenRayShards/LouisianaBayou/Levels/L_LouisianaBayouLookdev",
+  "textures": {
+    "T_LB_WhitePaint_BaseColor": [
+      "/Users/zenray/.claude/tmp/tmp-houdini-september-2026/tmp-bayou-louisiana/02_sources/textures/BayouWhitePaint_basecolor_edgeblack_2048.png",
+      "color",
+      "wrap"
+    ],
+    "T_LB_ShutterTrim_BaseColor": [
+      "/Users/zenray/.claude/tmp/tmp-houdini-september-2026/tmp-bayou-louisiana/02_sources/textures/BayouShutterTrim_basecolor_2048.png",
+      "color",
+      "wrap"
+    ],
+    "T_LB_RoofShingles_BaseColor": [
+      "/Users/zenray/.claude/tmp/tmp-houdini-september-2026/tmp-bayou-louisiana/02_sources/textures/BayouRoofTrimSheet36_BaseColor_ChatGPT_9October2026.png",
+      "color",
+      "clamp"
+    ],
+    "T_LB_RoofShingles_Roughness": [
+      "/Users/zenray/.claude/tmp/tmp-houdini-september-2026/tmp-bayou-louisiana/02_sources/textures/BayouRoofTrimSheet36_Roughness_FromHeight_9October2026.png",
+      "mask",
+      "clamp"
+    ],
+    "T_LB_RoofShingles_Normal": [
+      "/Users/zenray/.claude/tmp/tmp-houdini-september-2026/tmp-bayou-louisiana/02_sources/textures/BayouRoofTrimSheet36_Normal_S4_9October2026.png",
+      "normal",
+      "clamp"
+    ]
+  },
+  "normal_flip_green": true,
+  "materials": {
+    "MI_LB_WhitePaint": {
+      "parent": "M_LB_Surface",
+      "BaseColorTexture": "T_LB_WhitePaint_BaseColor",
+      "Roughness": 0.8
+    },
+    "MI_LB_ShutterTrim": {
+      "parent": "M_LB_Surface",
+      "BaseColorTexture": "T_LB_ShutterTrim_BaseColor",
+      "Roughness": 0.78
+    },
+    "MI_LB_RoofShingles": {
+      "parent": "M_LB_Surface",
+      "BaseColorTexture": "T_LB_RoofShingles_BaseColor",
+      "RoughnessTexture": "T_LB_RoofShingles_Roughness",
+      "RoughnessTextureWeight": 1.0,
+      "NormalTexture": "T_LB_RoofShingles_Normal",
+      "NormalStrength": 1.0
+    },
+    "MI_LB_Floor": {
+      "parent": "M_LB_Surface",
+      "BaseColorTint": [
+        0.32,
+        0.36,
+        0.2
+      ],
+      "Roughness": 1.0
+    },
+    "MI_LB_Manny": {
+      "parent": "M_LB_Surface",
+      "BaseColorTint": [
+        0.95,
+        0.42,
+        0.18
+      ],
+      "Roughness": 0.6
+    },
+    "MI_LB_WindowGlass": {
+      "parent": "M_LB_Glass",
+      "BaseColorTint": [
+        0.35,
+        0.42,
+        0.45
+      ],
+      "Roughness": 0.08,
+      "Opacity": 0.25
+    }
+  },
+  "meshes": {
+    "church_paint": "MI_LB_WhitePaint",
+    "church_windows": "MI_LB_ShutterTrim",
+    "church_glass": "MI_LB_WindowGlass",
+    "church_roof": "MI_LB_RoofShingles",
+    "floor": "MI_LB_Floor",
+    "manny": "MI_LB_Manny"
+  },
+  "axis_note": "11 October 2026 : measured on SM_manny bounds, Unreal (X,Y,Z) = 100 * Houdini (x, z, y).",
+  "camera": {
+    "houdini_pos_m": [
+      -10.164,
+      3.279,
+      14.754
+    ],
+    "houdini_forward": [
+      0.6057988,
+      0.0283968,
+      -0.795111
+    ],
+    "focal_mm": 50.0,
+    "sensor_mm": [
+      20.955,
+      15.2908
+    ],
+    "aperture": 22.0,
+    "focus_cm": 1500.0
+  },
+  "sun": {
+    "houdini_travel": [
+      0.4519844,
+      -0.6156615,
+      -0.6455006
+    ],
+    "lux": 10.0,
+    "angle_deg": 0.53
+  },
+  "sky": {
+    "skylight_intensity": 1.0,
+    "atmosphere": true
+  },
+  "exposure_ev100": 9.0,
+  "screenshot": {
+    "res": [
+      1600,
+      1168
+    ],
+    "path": "/Users/zenray/Create/Build/Productions/ZenRayHoudini/LouisianaBayou/unreal/captures/LB_Unreal_PC_camera_v001.png"
+  },
+  "render": {
+    "res": [
+      1600,
+      1052
+    ],
+    "spatial": 6,
+    "warmup": 48,
+    "out": "/Users/zenray/Create/Build/Productions/ZenRayHoudini/LouisianaBayou/unreal/captures",
+    "name": "LB_Unreal_View_v006",
+    "camera": "LB_Camera_View"
+  },
+  "camera_view": {
+    "_comment": "11 October 2026 : Houdini viewport panetab2 (the view of Matthieu screenshot), 50 mm, horizontal aperture 41.4214 mm, viewport aspect 1.52",
+    "houdini_pos_m": [
+      -25.161997,
+      8.755364,
+      24.034485
+    ],
+    "houdini_forward": [
+      0.7071085,
+      -0.1120548,
+      -0.6981704
+    ],
+    "focal_mm": 50.0,
+    "sensor_mm": [
+      41.4214,
+      27.25
+    ],
+    "aperture": 22.0,
+    "focus_cm": 3500.0
+  },
+  "exposure_bias": -0.3,
+  "fog_density": 0.02
+}

@@ -1,0 +1,48 @@
+# 9 October 2026 (Matthieu) : clapboards get a real thickness. EN: set KINDS before exec. Every white-paint wall quad of the given kinds (grp paint_church / paint_porch) is extruded INWARD by PLANK_T (face normal pointing out) into a closed box. Front face keeps its uv, the back face reuses the same uv (a mirror, as asked), the four thin sides take a thin strip aligned to the BOTTOM LEFT of the paint sheet. Normals are written for the new faces. No bevel. FR : les planches du mur ont une épaisseur, même UV en miroir au dos, côtés = bande fine en bas à gauche.
+import hou
+import numpy as np
+geo = hou.pwd().geometry()
+PLANK_T = globals().get('PLANK_T', 0.016)
+KINDS = globals().get('KINDS', ('paint_church', 'paint_porch'))
+UVM = 0.63; V0 = 0.087
+point_attribs = [a for a in geo.pointAttribs() if a.name() != 'P']
+prim_attribs = list(geo.primAttribs()); vert_attribs = [a for a in geo.vertexAttribs()]
+sel = [pr for pr in geo.prims() if pr.attribValue('grp') in KINDS and len(pr.vertices()) >= 3]
+if geo.findVertexAttrib('N') is None: geo.addAttrib(hou.attribType.Vertex, 'N', (0.0, 1.0, 0.0))
+def copy_prim_attribs(dst, src):
+    for at in prim_attribs:
+        try: dst.setAttribValue(at, src.attribValue(at))
+        except Exception: pass
+def new_prim(pts, src, uvs, n):
+    pr = geo.createPolygon()
+    for q in pts: pr.addVertex(q)
+    copy_prim_attribs(pr, src)
+    for v, uv in zip(pr.vertices(), uvs):
+        v.setAttribValue('uv', (float(uv[0]), float(uv[1]), 0.0))
+        try: v.setAttribValue('N', (float(n[0]), float(n[1]), float(n[2])))
+        except Exception: pass
+    return pr
+for pr in sel:
+    vs = list(pr.vertices()); P = np.array([v.point().position() for v in vs], float)
+    n = np.array(pr.normal(), float)
+    if np.linalg.norm(n) < 1e-9: continue
+    UV = [list(v.attribValue('uv'))[:2] for v in vs]
+    back = []
+    for v, p in zip(vs, P):
+        q = geo.createPoint(); q.setPosition(hou.Vector3(*(p - n * PLANK_T)))
+        for at in point_attribs:
+            try: q.setAttribValue(at, v.point().attribValue(at))
+            except Exception: pass
+        back.append(q)
+    # back face : reversed winding, same uv as the front (mirror)
+    nv = len(vs)
+    new_prim(back[::-1], pr, UV[::-1], -n)
+    # four sides : thin strip, bottom left of the sheet
+    for i in range(nv):
+        j = (i + 1) % nv
+        a, b = vs[i].point(), vs[j].point(); L = float(np.linalg.norm(P[j] - P[i]))
+        sn = np.cross(P[j] - P[i], n); sn = sn / max(np.linalg.norm(sn), 1e-12)
+        sx = (UV[i][0] if False else 0.0)
+        if L < 1e-6: continue
+        uvs = [(0.0, V0 + 0.01), (L * UVM, V0 + 0.01), (L * UVM, V0 + 0.01 + PLANK_T * UVM), (0.0, V0 + 0.01 + PLANK_T * UVM)]
+        new_prim([a, b, back[j], back[i]], pr, uvs, sn)

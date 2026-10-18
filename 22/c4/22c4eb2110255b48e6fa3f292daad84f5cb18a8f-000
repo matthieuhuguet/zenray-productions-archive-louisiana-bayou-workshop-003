@@ -1,0 +1,13 @@
+# 9 October 2026 : quick normal and roughness maps from a height sheet (provisional, until the Copernicus graph replaces them).
+# EN: normal = normalize(-dh/dx * S, -dh/dy * S, 1) packed to RGB (OpenGL, +Y up); roughness = 0.92 - 0.30 * height. FR : cartes provisoires depuis la height.
+import sys, numpy as np
+from PIL import Image
+from scipy import ndimage as ndi
+src, out_n, out_r = sys.argv[1:4]; S = float(sys.argv[4]) if len(sys.argv) > 4 else 6.0
+h = np.asarray(Image.open(src).convert('L')).astype(np.float32) / 255.0
+h = ndi.gaussian_filter(h, 0.8)
+dx = ndi.sobel(h, axis=1) / 8.0; dy = ndi.sobel(h, axis=0) / 8.0
+n = np.dstack([-dx * S, dy * S, np.ones_like(h)]); n /= np.linalg.norm(n, axis=2, keepdims=True)
+Image.fromarray(((n * 0.5 + 0.5) * 255).astype(np.uint8)).save(out_n)
+r = np.clip(0.92 - 0.30 * h, 0, 1); Image.fromarray((r * 255).astype(np.uint8)).save(out_r)
+print('ok', n.shape)

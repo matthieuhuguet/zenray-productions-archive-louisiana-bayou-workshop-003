@@ -1,0 +1,33 @@
+{
+  "component": "Layout_ChurchYard",
+  "active_version": "v001",
+  "versions": [
+    {
+      "version": "v001",
+      "label": "layout-eglise-arche-cloture-sur-terrain",
+      "dir_name": "v001_layout-eglise-arche-cloture-sur-terrain",
+      "timestamp": "2026-09-19 17:40:18",
+      "saved_at_iso": "2026-09-19T17:40:18+02:00",
+      "kind": "object",
+      "node_path": "/obj/Layout_ChurchYard",
+      "hip_file": "graph.hiplc",
+      "proof_geo": {
+        "points": 50194,
+        "prims": 43909,
+        "bbox": [
+          [
+            -53.571022033691406,
+            4.499044895172119,
+            -11.766012191772461
+          ],
+          [
+            53.56438446044922,
+            23.27056884765625,
+            53.57463455200195
+          ]
+        ]
+      },
+      "children_count": 14
+    }
+  ]
+}

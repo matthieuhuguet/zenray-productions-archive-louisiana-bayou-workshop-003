@@ -1,0 +1,33 @@
+{
+  "component": "Fence_Picket",
+  "active_version": "v001",
+  "versions": [
+    {
+      "version": "v001",
+      "label": "module-piquet",
+      "dir_name": "v001_module-piquet",
+      "timestamp": "2026-09-19 17:40:52",
+      "saved_at_iso": "2026-09-19T17:40:52+02:00",
+      "kind": "object",
+      "node_path": "/obj/Fence_Picket",
+      "hip_file": "graph.hiplc",
+      "proof_geo": {
+        "points": 247,
+        "prims": 199,
+        "bbox": [
+          [
+            -1.2999999523162842,
+            -0.12999999523162842,
+            -0.03799999877810478
+          ],
+          [
+            1.2999999523162842,
+            0.6779012084007263,
+            0.009499999694526196
+          ]
+        ]
+      },
+      "children_count": 8
+    }
+  ]
+}

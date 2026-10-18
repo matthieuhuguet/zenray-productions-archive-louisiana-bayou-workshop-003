@@ -1,0 +1,8 @@
+# 8 October 2026 13:57: Verify the saved scene in a fresh Houdini process.
+import hou
+from pathlib import Path
+project = Path('/Users/zenray/Create/Build/Productions/ZenRayHoudini/LouisianaBayou')
+hou.hipFile.load(str(project / 'LouisianaBayou.hiplc'), suppress_save_prompt=True, ignore_load_warnings=True)
+code = (project / 'Scripts/VerifyWindowRoofFix.py').read_text().replace("'Verification.json'", "'VerificationHeadless.json'")
+exec(compile(code, str(project / 'Scripts/VerifyWindowRoofFix.py'), 'exec'))
+print(result)

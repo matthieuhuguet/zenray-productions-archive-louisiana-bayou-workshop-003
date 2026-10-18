@@ -1,0 +1,17 @@
+{
+  "/obj/Church/boolean_window_cut": {
+    "points": 1190,
+    "primitives": 278,
+    "errors": []
+  },
+  "/obj/Church/Component_Roof/build_shingles": {
+    "points": 5040,
+    "primitives": 3780,
+    "errors": []
+  },
+  "/obj/Church/OUT_church": {
+    "points": 24474,
+    "primitives": 18054,
+    "errors": []
+  }
+}

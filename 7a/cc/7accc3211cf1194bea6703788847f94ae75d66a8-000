@@ -1,0 +1,25 @@
+# 9 October 2026 : turn the tile centroids of CountRoofTiles.py into rows, columns, spacing and randomness (homography to the real roof rectangle).
+# EN: u along the eave (metres), v up the slope (metres); rows = clusters of v; per row: tile count, u spacing, stagger.
+# FR : rangées, colonnes, espacement et aléa des tuiles de la référence, redressés à plat.
+import sys, json
+import numpy as np
+data = json.load(open(sys.argv[1]))
+QUADS = {'church': ([(50,745),(655,676),(890,362),(285,497)], 8.24, 3.27),
+         'porch':  ([(735,740),(925,722),(1042,572),(862,600)], 1.45, 1.40)}
+def homography(src, dst):
+    A = []
+    for (x, y), (u, v) in zip(src, dst):
+        A.append([x, y, 1, 0, 0, 0, -u * x, -u * y, -u]); A.append([0, 0, 0, x, y, 1, -v * x, -v * y, -v])
+    _, _, Vt = np.linalg.svd(np.array(A, float)); return Vt[-1].reshape(3, 3)
+out = {}
+for name, (quad, Wm, Hm) in QUADS.items():
+    Hh = homography(quad, [(0, 0), (Wm, 0), (Wm, Hm), (0, Hm)])
+    c = np.array(data[name]['cent']); p = np.c_[c, np.ones(len(c))] @ Hh.T; uv = p[:, :2] / p[:, 2:3]
+    ar = np.array(data[name]['area'])
+    v = uv[:, 1]; order = np.argsort(v)
+    # rows: break where the gap between consecutive sorted v is larger than 35 percent of the median tile pitch
+    gaps = np.diff(v[order]); 
+    h = np.histogram(v, bins=60, range=(0, Hm))[0]
+    print(name, 'tiles', len(v), 'hist', h.tolist())
+    out[name] = {'uv': uv.tolist()}
+json.dump(out, open(sys.argv[1] + '.uv.json', 'w'))

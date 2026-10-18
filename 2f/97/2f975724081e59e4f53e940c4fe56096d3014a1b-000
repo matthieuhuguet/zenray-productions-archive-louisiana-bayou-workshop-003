@@ -1,0 +1,53 @@
+# 16 October 2026 : N-VIEW CONTACT SHEET OF THE /obj VIEWPORT (4 to 6 views, flipbook, no render). EN: set NAME, DIR, TARGET (x,y,z), VIEWS (list of (label, (dx,dy,dz)) camera offsets from TARGET) and optional SIZE/FOCAL before exec ; the viewport camera is restored afterwards. FR : planche de 4 a 6 vues de la vue OBJ, sans rendu.
+import hou, os
+from PIL import Image
+
+NAME = globals().get('NAME', 'views')
+OUT = globals().get('DIR', '/Users/zenray/Create/Build/Productions/ZenRayHoudini/LouisianaBayou/captures_procedural_roof/')
+T = globals().get('TARGET', (0.0, 5.5, 0.0))
+SIZE = globals().get('SIZE', 700)
+FOCAL = globals().get('FOCAL', 35)
+COLS = globals().get('COLS', 3)
+VIEWS = globals().get('VIEWS', [
+    ('front', (0.0, 0.0, 22.0)),
+    ('side', (22.0, 0.0, 0.0)),
+    ('top', (0.001, 22.0, 0.0)),
+    ('persp_front_left', (-13.0, 7.0, 15.0)),
+    ('persp_back_right', (13.0, 7.0, -15.0)),
+    ('ridge_close', (-5.0, 3.0, 7.0)),
+])
+MODE = globals().get('MODE', None)   # e.g. hou.glShadingType.WireGhost ; None keeps the viewport as is
+os.makedirs(OUT, exist_ok=True)
+sv = next(p for p in hou.ui.paneTabs() if p.type() == hou.paneTabType.SceneViewer)
+vp = sv.curViewport()
+old_cam = vp.camera()
+old_view = vp.defaultCamera().stash()
+sets = [vp.settings().displaySet(t) for t in (hou.displaySetType.DisplayModel, hou.displaySetType.SceneObject, hou.displaySetType.TemplateModel)]
+old_modes = [d.shadedMode() for d in sets]
+if MODE is not None:
+    for d in sets: d.setShadedMode(MODE)
+cam = hou.node('/obj').node('cam_debug_capture') or hou.node('/obj').createNode('cam', 'cam_debug_capture')
+rows = (len(VIEWS) + COLS - 1) // COLS
+sheet = Image.new('RGB', (SIZE * COLS, SIZE * rows), (60, 60, 60))
+try:
+    for i, (label, off) in enumerate(VIEWS):
+        pos = (T[0] + off[0], T[1] + off[1], T[2] + off[2])
+        cam.parm('resx').set(SIZE); cam.parm('resy').set(SIZE); cam.parm('aspect').set(1.0); cam.parm('focal').set(FOCAL)
+        cam.parmTuple('t').set(pos)
+        up = (0, 0, -1) if label.startswith('top') else (0, 1, 0)
+        cam.parmTuple('r').set(hou.hmath.buildRotateLookAt(hou.Vector3(pos), hou.Vector3(T), hou.Vector3(up)).extractRotates())
+        vp.setCamera(cam)
+        p = OUT + '%s_%s.png' % (NAME, label)
+        fb = sv.flipbookSettings().stash()
+        fb.output(p); fb.outputToMPlay(False); fb.useResolution(True); fb.resolution((SIZE, SIZE)); fb.frameRange((hou.frame(), hou.frame()))
+        sv.flipbook(vp, fb)
+        im = Image.open(p).convert('RGBA')
+        sheet.paste(Image.alpha_composite(Image.new('RGBA', im.size, (60, 60, 60, 255)), im).convert('RGB'), ((i % COLS) * SIZE, (i // COLS) * SIZE))
+finally:
+    for d, m in zip(sets, old_modes): d.setShadedMode(m)
+    vp.setCamera(old_cam)
+    if old_cam is None:
+        vp.setDefaultCamera(old_view)
+    cam.destroy()
+sheet.save(OUT + NAME + '_sheet.png')
+result = OUT + NAME + '_sheet.png'

@@ -1,0 +1,97 @@
+{
+  "component": "Terrain",
+  "version": "v001",
+  "label": "terrain-recupere-du-chantier-wavy",
+  "timestamp": "2026-09-19 17:39:49",
+  "saved_at_iso": "2026-09-19T17:39:49+02:00",
+  "src_hip": "/Users/zenray/Create/Build/Productions/ZenRayHoudini/LouisianaBayou/LouisianaBayou.hiplc",
+  "node_path": "/obj/Terrain",
+  "children": [
+    {
+      "name": "plate",
+      "type": "heightfield"
+    },
+    {
+      "name": "layer_macroform",
+      "type": "volumewrangle"
+    },
+    {
+      "name": "layer_broad",
+      "type": "heightfield_noise"
+    },
+    {
+      "name": "layer_mid",
+      "type": "heightfield_noise"
+    },
+    {
+      "name": "layer_fine",
+      "type": "heightfield_noise"
+    },
+    {
+      "name": "comp_macro_broad",
+      "type": "heightfield_layer"
+    },
+    {
+      "name": "comp_add_mid",
+      "type": "heightfield_layer"
+    },
+    {
+      "name": "comp_add_fine",
+      "type": "heightfield_layer"
+    },
+    {
+      "name": "erode",
+      "type": "heightfield_erode::3.0"
+    },
+    {
+      "name": "erode_lowpass",
+      "type": "heightfield_blur"
+    },
+    {
+      "name": "erode_detail",
+      "type": "heightfield_layer"
+    },
+    {
+      "name": "comp_add_erosion_detail",
+      "type": "heightfield_layer"
+    },
+    {
+      "name": "to_polygons",
+      "type": "convertheightfield"
+    },
+    {
+      "name": "tone",
+      "type": "color"
+    },
+    {
+      "name": "matte",
+      "type": "material"
+    },
+    {
+      "name": "normals",
+      "type": "normal"
+    },
+    {
+      "name": "OUT_terrain",
+      "type": "null"
+    }
+  ],
+  "external_inputs": [],
+  "hip_file": "graph.hiplc",
+  "proof_geo": {
+    "points": 75625,
+    "prims": 75076,
+    "bbox": [
+      [
+        -54.79999923706055,
+        -1.2049654722213745,
+        -54.79999923706055
+      ],
+      [
+        54.79999923706055,
+        18.485097885131836,
+        54.79999923706055
+      ]
+    ]
+  }
+}

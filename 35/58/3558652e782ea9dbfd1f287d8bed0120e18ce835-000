@@ -1,0 +1,141 @@
+{
+  "component": "Church",
+  "active_version": "v005",
+  "versions": [
+    {
+      "version": "v001",
+      "label": "texturing_start",
+      "dir_name": "v001_texturing_start",
+      "timestamp": "2026-09-18 11:16:43",
+      "saved_at_iso": "2026-09-18T11:16:43+02:00",
+      "kind": "object",
+      "node_path": "/obj/Church",
+      "hip_file": "graph.hiplc",
+      "proof_geo": {
+        "points": 21158,
+        "prims": 15585,
+        "bbox": [
+          [
+            -2.285012722015381,
+            -2.98023217215615e-10,
+            -3.3743271827697754
+          ],
+          [
+            2.285012722015381,
+            5.450000286102295,
+            5.253749847412109
+          ]
+        ]
+      },
+      "children_count": 22
+    },
+    {
+      "version": "v002",
+      "label": "eglise-etat-du-19-septembre",
+      "dir_name": "v002_eglise-etat-du-19-septembre",
+      "timestamp": "2026-09-19 17:41:04",
+      "saved_at_iso": "2026-09-19T17:41:04+02:00",
+      "kind": "object",
+      "node_path": "/obj/Church",
+      "hip_file": "graph.hiplc",
+      "proof_geo": {
+        "points": 21158,
+        "prims": 15585,
+        "bbox": [
+          [
+            -2.285012722015381,
+            -2.98023217215615e-10,
+            -3.3743271827697754
+          ],
+          [
+            2.285012722015381,
+            5.450000286102295,
+            5.253749847412109
+          ]
+        ]
+      },
+      "children_count": 22
+    },
+    {
+      "version": "v003",
+      "label": "before_window_boolean_roof_gaps",
+      "dir_name": "v003_before_window_boolean_roof_gaps",
+      "timestamp": "2026-10-08 13:41:57",
+      "saved_at_iso": "2026-10-08T13:41:57+02:00",
+      "kind": "object",
+      "node_path": "/obj/Church",
+      "hip_file": "graph.hiplc",
+      "proof_geo": {
+        "points": 23980,
+        "prims": 17306,
+        "bbox": [
+          [
+            -2.286137104034424,
+            -2.98023217215615e-10,
+            -4.187417984008789
+          ],
+          [
+            2.286137104034424,
+            5.450000286102295,
+            6.053750038146973
+          ]
+        ]
+      },
+      "children_count": 36
+    },
+    {
+      "version": "v004",
+      "label": "exact_window_boolean_closed_roof",
+      "dir_name": "v004_exact_window_boolean_closed_roof",
+      "timestamp": "2026-10-08 13:56:36",
+      "saved_at_iso": "2026-10-08T13:56:36+02:00",
+      "kind": "object",
+      "node_path": "/obj/Church",
+      "hip_file": "graph.hiplc",
+      "proof_geo": {
+        "points": 24474,
+        "prims": 18054,
+        "bbox": [
+          [
+            -2.286137104034424,
+            -2.98023217215615e-10,
+            -4.187417984008789
+          ],
+          [
+            2.286137104034424,
+            5.450000286102295,
+            6.053750038146973
+          ]
+        ]
+      },
+      "children_count": 36
+    },
+    {
+      "version": "v005",
+      "label": "verified_window_boolean_roof_gable_clearance",
+      "dir_name": "v005_verified_window_boolean_roof_gable_clearance",
+      "timestamp": "2026-10-08 14:00:36",
+      "saved_at_iso": "2026-10-08T14:00:36+02:00",
+      "kind": "object",
+      "node_path": "/obj/Church",
+      "hip_file": "graph.hiplc",
+      "proof_geo": {
+        "points": 24474,
+        "prims": 18054,
+        "bbox": [
+          [
+            -2.286137104034424,
+            -2.98023217215615e-10,
+            -4.187417984008789
+          ],
+          [
+            2.286137104034424,
+            5.450000286102295,
+            6.053750038146973
+          ]
+        ]
+      },
+      "children_count": 36
+    }
+  ]
+}

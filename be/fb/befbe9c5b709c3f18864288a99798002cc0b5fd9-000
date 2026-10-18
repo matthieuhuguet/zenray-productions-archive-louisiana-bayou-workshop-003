@@ -1,0 +1,58 @@
+# 8 October 2026 13:50: Verify open window interiors, intact surroundings and upper roof coverage with rays.
+import hou, json, math
+from pathlib import Path
+ROOT = Path('/Users/zenray/Create/Build/Productions/ZenRayHoudini/LouisianaBayou/versions/window_roof_fixes_8October2026')
+c = hou.node('/obj/Church')
+wall = c.node('window_cut_convex').geometry()
+def hit(geo, origin, direction, pattern=None, max_hit=10):
+    pos, norm, uv = hou.Vector3(), hou.Vector3(), hou.Vector3()
+    prim = geo.intersect(hou.Vector3(origin),hou.Vector3(direction),pos,norm,uv,pattern=pattern,min_hit=0,max_hit=max_hit,tolerance=1e-7)
+    return prim,tuple(pos),tuple(norm)
+open_hits, border_misses, total = [],[],0
+for kind in ('A','B'):
+    comp=c.node('Component_Window'+kind)
+    W,H=comp.evalParm('window_width'),comp.evalParm('window_height')
+    instances=c.node('cutter_points_'+kind).geometry().points()
+    for pt in instances:
+        t=pt.position(); q=hou.Quaternion(pt.attribValue('orient')); normal=q.rotate(hou.Vector3((0,0,1))); axis=q.rotate(hou.Vector3((1,0,0)))
+        for u in (-0.40,0,0.40):
+            for v in (0.1,0.5,0.9):
+                origin=t+axis*(W*u)+hou.Vector3((0,H*v,0))+normal*0.15
+                pr,p,n=hit(wall,origin,-normal,max_hit=0.3);total+=1
+                if pr>=0:open_hits.append({'kind':kind,'position':p})
+        for u in (-0.5-0.015/W,0.5+0.015/W):
+            origin=t+axis*(W*u)+hou.Vector3((0,H*0.5,0))+normal*0.15
+            pr,p,n=hit(wall,origin,-normal,max_hit=0.3)
+            if pr<0:border_misses.append({'kind':kind,'origin':tuple(origin)})
+r=c.node('Component_Roof'); roof=r.geometry(); w=r.evalParm('width');gh=r.evalParm('gable_height');wh=r.evalParm('wall_height')
+half=w/2+r.evalParm('eave_overhang'); length=r.evalParm('length')+2*r.evalParm('gable_overhang'); slope=math.hypot(half,gh);pitch=math.atan2(gh,half);rows=r.evalParm('shingle_rows')
+missing=[]; roof_samples=0; downward=0
+for side in (-1,1):
+    normal=hou.Vector3((side*math.sin(pitch),math.cos(pitch),0))
+    for i in range(0,61):
+        d=slope-(2*slope/rows)*(i/61)
+        for j in range(0,302):
+            z=-length/2-0.024+(length+0.048)*j/301
+            p=hou.Vector3((side*(half-d*math.cos(pitch)),wh+d*math.sin(pitch),z))
+            pr,pos,n=hit(roof,p+normal*0.4,-normal,pattern='group_shingles group_ridge',max_hit=0.6);roof_samples+=1
+            if pr<0:missing.append((side,d,z))
+            elif hou.Vector3(n).dot(normal)<0:downward+=1
+# 8 October 2026 14:00: Test the visible gable seams against the complete church, not only the shingles.
+exposed_timber = []
+full = c.node('promote_mat_cd').geometry()
+for side in (-1, 1):
+    normal = hou.Vector3((side*math.sin(pitch), math.cos(pitch), 0))
+    for end in (-1, 1):
+        for i in range(41):
+            d = slope - 0.08 - 0.6 * i / 40
+            for j in range(11):
+                z = end * (r.evalParm('length')/2 + (j-5)*0.005)
+                p = hou.Vector3((side*(half-d*math.cos(pitch)), wh+d*math.sin(pitch), z))
+                pr, pos, n = hit(full, p+normal*0.5, -normal, max_hit=1)
+                if pr < 0 or full.prim(pr).attribValue('material_id') != 'M_WoodShinglesRoof_03':
+                    exposed_timber.append(pos)
+report={'window_interior_samples':total,'window_interior_wall_hits':open_hits,'window_border_misses':border_misses,'upper_roof_samples':roof_samples,'upper_roof_uncovered_count':len(missing),'upper_roof_uncovered_examples':missing[:20],'upper_roof_inverted_hits':downward,'gable_seam_samples':1804,'exposed_gable_timber':exposed_timber,'roof_rows':rows,'Cycles':next(p for p in hou.ui.paneTabs() if p.type()==hou.paneTabType.SceneViewer and p.pwd().path()=='/stage').currentHydraRenderer() if hou.isUIAvailable() else 'headless'}
+(ROOT/'Verification.json').write_text(json.dumps(report,indent=2))
+result=report
+
+assert not open_hits and not border_misses and not missing and not downward and not exposed_timber, report

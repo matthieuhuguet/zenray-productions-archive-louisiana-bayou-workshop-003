@@ -1,0 +1,15 @@
+# 9 October 2026 : render one Cycles image from a free camera. EN: set `views` = [(name, (x,y,z), (tx,ty,tz), focal)] then exec this file. FR : rendu Cycles depuis une caméra libre.
+import hou, os
+OUT = '/Users/zenray/.claude/tmp/tmp-houdini-september-2026/tmp-bayou-louisiana/03_work/uv-fix/'
+os.makedirs(OUT, exist_ok=True)
+st = hou.node('/stage'); cam = st.node('FIX_cam'); rop = st.node('PC_render_cycles')
+rop.parm('override_camera').set('/cameras/FIX_cam'); rop.parm('res_user1').set(globals().get('RES_W', 1280)); rop.parm('res_user2').set(globals().get('RES_H', 720))
+done = []
+for name, pos, tgt, focal in views:
+    cam.parmTuple('t').set(pos)
+    cam.parmTuple('r').set(hou.hmath.buildRotateLookAt(hou.Vector3(pos), hou.Vector3(tgt), hou.Vector3((0, 1, 0))).extractRotates())
+    cam.parm('focalLength').set(focal)
+    p = OUT + name + '.png'
+    if os.path.exists(p): os.remove(p)
+    rop.parm('outputimage').set(p); rop.render(); done.append(p)
+result = done

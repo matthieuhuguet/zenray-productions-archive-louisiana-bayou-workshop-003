@@ -1,0 +1,10 @@
+{
+  "node_path": "/obj/Church/Component_WoodFacade",
+  "node_type": "zenray_component_woodfacade",
+  "label": "symmetric_gable_cuts",
+  "version": "v002",
+  "timestamp": "2026-09-11 21:30:06",
+  "points": 552,
+  "prims": 138,
+  "hip": "/Users/zenray/Create/Build/Productions/ZenRayHoudini/LouisianaBayou.hip"
+}

@@ -1,0 +1,85 @@
+// 8 October 2026 13:59: Keep swept gable timbers below the shingles; preserve the cross.
+
+float w = ch("../width");
+float l = ch("../length");
+float wh = ch("../wall_height");
+float fgh = ch("../front_gable_height");
+float rgh = ch("../rear_gable_height");
+float arch_deg = ch("../arch_angle");
+float cross_h = ch("../cross_height");
+
+float z_front = l * 0.5;
+float z_rear = -l * 0.5;
+float x_left = -w * 0.5;
+float x_right = w * 0.5;
+
+float gables_h[] = array(fgh, rgh);
+float gables_z[] = array(z_front, z_rear);
+
+float theta = radians(clamp(arch_deg, 5.0, 89.0));
+
+for (int g = 0; g < 2; ++g) {
+    float gh = gables_h[g];
+    float z = gables_z[g];
+    float timber_drop = ch("../beam_size") * 0.5 * sqrt(1.0 + pow(2.0 * gh / w, 2.0)) + 0.005;
+    float peak_y = wh + gh - timber_drop;
+    
+    // Corner eave points
+    int pt_left = addpoint(0, set(x_left, wh - timber_drop, z));
+    int pt_right = addpoint(0, set(x_right, wh - timber_drop, z));
+    int pt_peak = addpoint(0, set(0, peak_y, z));
+    
+    // Rafters
+    int r_l = addprim(0, "polyline"); addvertex(0, r_l, pt_left); addvertex(0, r_l, pt_peak);
+    int r_r = addprim(0, "polyline"); addvertex(0, r_r, pt_right); addvertex(0, r_r, pt_peak);
+    
+    // King post drop from apex: ~52% of gable height
+    float king_drop = gh * 0.30;
+    float y_king = peak_y - king_drop; // junction where curved braces meet king post
+    float y_pendant = y_king - 0.12;   // pendant tip extends slightly below junction
+    
+    int pt_pendant = addpoint(0, set(0, y_pendant, z));
+    int p_king = addprim(0, "polyline"); addvertex(0, p_king, pt_peak); addvertex(0, p_king, pt_pendant);
+    
+    // Circular arc radius R so that endpoint at angle theta hits the rafter exactly:
+    float slope = (2.0 * gh) / w;
+    float denom = sin(theta) + slope * (1.0 - cos(theta));
+    float R = (denom > 0.001) ? (king_drop / denom) : (king_drop * 0.5);
+    
+    int num_segs = 24;
+    
+    // Left circular arch brace: tangent to king post at (0, y_king), curves up and out to rafter
+    int prim_arch_l = addprim(0, "polyline");
+    for (int i = 0; i <= num_segs; ++i) {
+        float u = float(i) / float(num_segs); // 0 at king post, 1 at rafter
+        float phi = u * theta;
+        float x = -R * (1.0 - cos(phi));
+        float y = y_king + R * sin(phi);
+        int pt = addpoint(0, set(x, y, z));
+        addvertex(0, prim_arch_l, pt);
+    }
+    
+    // Right circular arch brace: symmetrical
+    int prim_arch_r = addprim(0, "polyline");
+    for (int i = 0; i <= num_segs; ++i) {
+        float u = float(i) / float(num_segs);
+        float phi = u * theta;
+        float x = R * (1.0 - cos(phi));
+        float y = y_king + R * sin(phi);
+        int pt = addpoint(0, set(x, y, z));
+        addvertex(0, prim_arch_r, pt);
+    }
+}
+
+// Single cross on the front gable apex (Z = z_front)
+float peak_y = wh + fgh;
+float z = z_front + 0.05; // Placed proudly on front gable timber
+int c_base = addpoint(0, set(0, peak_y, z));
+int c_top = addpoint(0, set(0, peak_y + cross_h, z));
+int prim_c_vert = addprim(0, "polyline"); addvertex(0, prim_c_vert, c_base); addvertex(0, prim_c_vert, c_top);
+
+float crossbar_y = peak_y + cross_h * 0.68;
+float crossbar_half_w = cross_h * 0.26;
+int c_bar_l = addpoint(0, set(-crossbar_half_w, crossbar_y, z));
+int c_bar_r = addpoint(0, set( crossbar_half_w, crossbar_y, z));
+int prim_c_bar = addprim(0, "polyline"); addvertex(0, prim_c_bar, c_bar_l); addvertex(0, prim_c_bar, c_bar_r);

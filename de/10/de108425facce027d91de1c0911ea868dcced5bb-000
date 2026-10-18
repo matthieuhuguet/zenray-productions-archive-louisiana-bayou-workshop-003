@@ -1,0 +1,37 @@
+# 8 October 2026 13:43: Capture native OpenGL geometry and restore the user's viewport.
+import hou
+from pathlib import Path
+ROOT = Path('/Users/zenray/Create/Build/Productions/ZenRayHoudini/LouisianaBayou/versions/window_roof_fixes_8October2026')
+LABEL = globals().get('capture_label', 'Before')
+POSITIONS = [(-10, 7, 13), (10, 7, -13)]
+TARGET = hou.Vector3((0, 2.5, 0.7))
+sv = next(p for p in hou.ui.paneTabs() if p.type() == hou.paneTabType.SceneViewer and p.pwd().path() == '/obj')
+old_tab = sv.pane().currentTab()
+sv.setIsCurrentTab()
+from PySide6.QtCore import QCoreApplication
+QCoreApplication.processEvents()
+vp = sv.curViewport()
+old_camera = vp.camera()
+old_view = vp.defaultCamera().stash()
+cam = hou.node('/obj').createNode('cam', 'cam_window_roof_verification')
+try:
+    cam.parm('focal').set(45)
+    for index, pos in enumerate(POSITIONS):
+        cam.parmTuple('t').set(pos)
+        cam.parmTuple('r').set(hou.hmath.buildRotateLookAt(hou.Vector3(pos), TARGET, hou.Vector3((0,1,0))).extractRotates())
+        vp.setCamera(cam)
+        fb = sv.flipbookSettings().stash()
+        fb.output(str(ROOT / (LABEL + '_view' + str(index + 1) + '.png')))
+        fb.outputToMPlay(False)
+        fb.useResolution(True)
+        fb.resolution((1920,1080))
+        fb.cropOutMaskOverlay(True)
+        fb.frameRange((hou.frame(), hou.frame()))
+        sv.flipbook(vp,fb)
+finally:
+    vp.setCamera(old_camera)
+    if old_camera is None:
+        vp.setDefaultCamera(old_view)
+    cam.destroy()
+    old_tab.setIsCurrentTab()
+result = [str(p) for p in ROOT.glob(LABEL + '_view*.png')]

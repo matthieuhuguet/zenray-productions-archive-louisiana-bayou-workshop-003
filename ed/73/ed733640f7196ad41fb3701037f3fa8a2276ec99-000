@@ -1,0 +1,85 @@
+{
+  "component": "Layout_ChurchYard",
+  "version": "v001",
+  "label": "layout-eglise-arche-cloture-sur-terrain",
+  "timestamp": "2026-09-19 17:40:18",
+  "saved_at_iso": "2026-09-19T17:40:18+02:00",
+  "src_hip": "/Users/zenray/Create/Build/Productions/ZenRayHoudini/LouisianaBayou/LouisianaBayou.hiplc",
+  "node_path": "/obj/Layout_ChurchYard",
+  "children": [
+    {
+      "name": "om_terrain",
+      "type": "object_merge"
+    },
+    {
+      "name": "om_church",
+      "type": "object_merge"
+    },
+    {
+      "name": "place_church",
+      "type": "xform"
+    },
+    {
+      "name": "seat_church",
+      "type": "attribwrangle"
+    },
+    {
+      "name": "lower_church",
+      "type": "attribwrangle"
+    },
+    {
+      "name": "om_arch",
+      "type": "object_merge"
+    },
+    {
+      "name": "place_arch",
+      "type": "xform"
+    },
+    {
+      "name": "seat_arch",
+      "type": "attribwrangle"
+    },
+    {
+      "name": "lower_arch",
+      "type": "attribwrangle"
+    },
+    {
+      "name": "fence_path_curve",
+      "type": "python"
+    },
+    {
+      "name": "fence_loop",
+      "type": "zenray_picket_fence"
+    },
+    {
+      "name": "follow_ground_fence",
+      "type": "attribwrangle"
+    },
+    {
+      "name": "assemble",
+      "type": "merge"
+    },
+    {
+      "name": "OUT_layout",
+      "type": "null"
+    }
+  ],
+  "external_inputs": [],
+  "hip_file": "graph.hiplc",
+  "proof_geo": {
+    "points": 50194,
+    "prims": 43909,
+    "bbox": [
+      [
+        -53.571022033691406,
+        4.499044895172119,
+        -11.766012191772461
+      ],
+      [
+        53.56438446044922,
+        23.27056884765625,
+        53.57463455200195
+      ]
+    ]
+  }
+}

@@ -1,0 +1,150 @@
+{
+  "component": "Cop_PeelNoise_01",
+  "version": "v001",
+  "label": "texturing_start",
+  "timestamp": "2026-09-18 11:27:41",
+  "src_hip": "/Users/zenray/Create/Build/Productions/ZenRayHoudini/LouisianaBayou/LouisianaBayou.hiplc",
+  "node_path": "/obj/Cop_PeelNoise_01",
+  "final_node": "zrexport_temp",
+  "proof_res": 1024,
+  "children": [
+    {
+      "name": "bg",
+      "type": "constant"
+    },
+    {
+      "name": "shape_noise",
+      "type": "fractalnoise"
+    },
+    {
+      "name": "shape_cut",
+      "type": "remap"
+    },
+    {
+      "name": "warp1_cloud",
+      "type": "fractalnoise"
+    },
+    {
+      "name": "warp1",
+      "type": "distort"
+    },
+    {
+      "name": "warp2_cloud",
+      "type": "fractalnoise"
+    },
+    {
+      "name": "warp2",
+      "type": "distort"
+    },
+    {
+      "name": "elev_zone",
+      "type": "fractalnoise"
+    },
+    {
+      "name": "elev_grade",
+      "type": "remap"
+    },
+    {
+      "name": "drop_zone",
+      "type": "fractalnoise"
+    },
+    {
+      "name": "drop_cut",
+      "type": "remap"
+    },
+    {
+      "name": "plates_elev",
+      "type": "blend"
+    },
+    {
+      "name": "plates_holed",
+      "type": "blend"
+    },
+    {
+      "name": "mottle_noise",
+      "type": "fractalnoise"
+    },
+    {
+      "name": "mottle_grade",
+      "type": "remap"
+    },
+    {
+      "name": "film_mottle",
+      "type": "blend"
+    },
+    {
+      "name": "plates_height",
+      "type": "remap"
+    },
+    {
+      "name": "plates_add",
+      "type": "blend"
+    },
+    {
+      "name": "shift_down",
+      "type": "xform"
+    },
+    {
+      "name": "rim_top",
+      "type": "blend"
+    },
+    {
+      "name": "rim_varied",
+      "type": "blend"
+    },
+    {
+      "name": "rim_height",
+      "type": "remap"
+    },
+    {
+      "name": "rims_add",
+      "type": "blend"
+    },
+    {
+      "name": "shift_up",
+      "type": "xform"
+    },
+    {
+      "name": "bot_band",
+      "type": "blend"
+    },
+    {
+      "name": "bot_height",
+      "type": "remap"
+    },
+    {
+      "name": "shadow_add",
+      "type": "blend"
+    },
+    {
+      "name": "fiber_noise",
+      "type": "fractalnoise"
+    },
+    {
+      "name": "fiber_signed",
+      "type": "remap"
+    },
+    {
+      "name": "fiber_add",
+      "type": "blend"
+    },
+    {
+      "name": "micro_noise",
+      "type": "fractalnoise"
+    },
+    {
+      "name": "micro_signed",
+      "type": "remap"
+    },
+    {
+      "name": "final",
+      "type": "blend"
+    }
+  ],
+  "external_inputs": [],
+  "hip_file": "graph.hiplc",
+  "proof_file": "proof.png",
+  "levels": {
+    "error": "[Errno 2] No such file or directory: '/Users/zenray/Create/Build/Productions/ZenRayHoudini/LouisianaBayou/snapshots/LouisianaBayou/Cop_PeelNoise_01/v001_texturing_start/proof.png'"
+  }
+}

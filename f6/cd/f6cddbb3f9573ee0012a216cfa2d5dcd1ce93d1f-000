@@ -1,0 +1,31 @@
+# 11 October 2026, 16:30 : exports every piece of the Cycles lookdev view (/obj/Church_Lookdev/OUT_church_lookdev, split by prim attribute "name") to one FBX per piece for Unreal.
+# FR : exporte chaque pièce de la vue Cycles (église, vitres, toit, sol, Manny) en un FBX par pièce, en centimètres, sans slot de matériau Houdini.
+import hou, os
+SRC = '/obj/Church_Lookdev/OUT_church_lookdev'
+OUT = '/Users/zenray/Create/Build/Productions/ZenRayHoudini/LouisianaBayou/unreal_export'
+PIECES = ['church_paint', 'church_windows', 'church_glass', 'church_roof', 'floor', 'manny']
+TMP = '/obj/UE_Export_Lookdev'
+
+def run():
+    os.makedirs(OUT, exist_ok=True)
+    old = hou.node(TMP)
+    if old: old.destroy()
+    obj = hou.node('/obj').createNode('geo', 'UE_Export_Lookdev')
+    obj.setDisplayFlag(False)
+    om = obj.createNode('object_merge', 'src'); om.parm('objpath1').set(SRC)
+    report = {}
+    for p in PIECES:
+        bl = obj.createNode('blast', 'keep_' + p); bl.setInput(0, om)
+        bl.parm('group').set('@name=' + p); bl.parm('grouptype').set(4); bl.parm('negate').set(1)
+        clean = obj.createNode('attribdelete', 'clean_' + p); clean.setInput(0, bl)
+        clean.parm('primdel').set('shop_materialpath material_name material_id slot')
+        n = obj.createNode('null', 'OUT_' + p); n.setInput(0, clean)
+        rop = hou.node('/out').node('UE_fbx_' + p) or hou.node('/out').createNode('filmboxfbx', 'UE_fbx_' + p)
+        rop.parm('startnode').set(n.path())
+        rop.parm('sopoutput').set('%s/%s.fbx' % (OUT, p))
+        rop.parm('convertunits').set(1)
+        rop.parm('exportkind').set(0)  # binary
+        rop.render()
+        g = n.geometry()
+        report[p] = (len(g.prims()), round(g.boundingBox().sizevec()[1], 3), os.path.getsize('%s/%s.fbx' % (OUT, p)))
+    return report

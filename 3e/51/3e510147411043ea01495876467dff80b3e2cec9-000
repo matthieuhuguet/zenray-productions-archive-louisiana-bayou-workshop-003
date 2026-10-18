@@ -1,0 +1,43 @@
+# 9 October 2026 : measure the 36 tiles of a 6 x 6 trim sheet (shingles on a black background).
+# EN: threshold the height, close and fill the islands, label them, order them row by row, then find for each the largest INSCRIBED rectangle covered at least 98.5 percent by wood, so black never enters a UV. Output: JSON of (u0,u1,v0,v1), v from the bottom.
+# FR : mesure des 36 tuiles de la feuille 6 x 6, rectangle inscrit couvert a 98,5 pour cent.
+import sys, json
+import numpy as np
+from PIL import Image
+from scipy import ndimage as ndi
+height_path, out_json = sys.argv[1], sys.argv[2]
+THRESH = 0.06; COVER = 0.985
+im = np.asarray(Image.open(height_path).convert('L')).astype(float) / 255.0
+H, W = im.shape
+mask = ndi.binary_fill_holes(ndi.binary_closing(im > THRESH, iterations=3))
+lab, n = ndi.label(mask)
+objs = ndi.find_objects(lab); areas = ndi.sum(mask, lab, range(1, n + 1))
+keep = [i for i in range(n) if areas[i] > 8000]
+assert len(keep) == 36, 'expected 36 tiles, found %d' % len(keep)
+cent = [(ndi.center_of_mass(mask, lab, i + 1)) for i in keep]            # (row, col)
+order = sorted(range(36), key=lambda k: cent[k][0])
+rows = [sorted(order[r * 6:(r + 1) * 6], key=lambda k: cent[k][1]) for r in range(6)]
+def inscribed(sub):
+    y0, y1, x0, x1 = 0, sub.shape[0], 0, sub.shape[1]
+    while True:
+        s = sub[y0:y1, x0:x1]
+        if s.size == 0: return None
+        if s.mean() >= COVER: return x0, x1, y0, y1
+        # trim the side with the most missing wood
+        miss = {'t': 1 - s[0].mean(), 'b': 1 - s[-1].mean(), 'l': 1 - s[:, 0].mean(), 'r': 1 - s[:, -1].mean()}
+        k = max(miss, key=miss.get)
+        if k == 't': y0 += 1
+        elif k == 'b': y1 -= 1
+        elif k == 'l': x0 += 1
+        else: x1 -= 1
+slots = []
+for r, row in enumerate(rows):
+    for c, k in enumerate(row):
+        sl = objs[keep[k]]; sub = (lab[sl] == keep[k] + 1)
+        x0, x1, y0, y1 = inscribed(sub)
+        X0, X1, Y0, Y1 = sl[1].start + x0, sl[1].start + x1, sl[0].start + y0, sl[0].start + y1
+        slots.append({'id': r * 6 + c + 1, 'row': r, 'col': c, 'bbox_px': [sl[1].start, sl[1].stop, sl[0].start, sl[0].stop], 'rect_px': [X0, X1, Y0, Y1],
+                      'uv': [round(X0 / W, 5), round(X1 / W, 5), round(1 - Y1 / H, 5), round(1 - Y0 / H, 5)]})
+json.dump({'sheet': height_path, 'size': [W, H], 'cover': COVER, 'slots': slots}, open(out_json, 'w'), indent=1)
+w = [s['rect_px'][1] - s['rect_px'][0] for s in slots]; h = [s['rect_px'][3] - s['rect_px'][2] for s in slots]
+print('36 slots; width px min/mean/max', min(w), round(sum(w) / 36), max(w), ' height px', min(h), round(sum(h) / 36), max(h))

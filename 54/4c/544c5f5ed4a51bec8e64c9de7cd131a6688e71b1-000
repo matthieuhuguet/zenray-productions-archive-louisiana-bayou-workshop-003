@@ -1,0 +1,42 @@
+# 16 October 2026 : REGRESSION CHECK, curves at zero must give back the original straight geometry. EN: for one component, cook with the ORIGINAL snippets (kept in node user data), then with the NEW snippets and the Church curve parameters at 0, and compare primitive counts per group, point count, bounding box and total area. The Church curve parameters are restored afterwards. Set COMP = 'Component_Roof' | 'Component_WoodFacade' | 'Component_Armature'. FR : courbes a zero = geometrie droite d'origine.
+import hou
+CH = hou.node('/obj/Church')
+COMP = globals().get('COMP', 'Component_Roof')
+NODES = {'Component_Roof': (('build_roof_structure', 'zr_roof_orig_build_roof_structure'), ('build_shingles', 'zr_roof_orig_build_shingles'), ('cut_ridge', 'zr_roof_orig_cut_ridge'), ('build_ridge_cap', 'zr_roof_orig_build_ridge_cap')),
+         'Component_WoodFacade': (('build_siding', 'zr_orig_snippet'),),
+         'Component_Armature': (('generate_gables_and_arches', 'zr_orig_snippet'),)}
+OUTS = {'Component_Roof': 'OUT_roof_v002', 'Component_WoodFacade': 'OUT_v004', 'Component_Armature': 'sweep_timber_beams'}
+comp = CH.node(COMP)
+out = comp.node(OUTS[COMP])
+
+def measure():
+    out.cook(force=True)
+    g = out.geometry()
+    groups = {}
+    for pg in g.primGroups():
+        groups[pg.name()] = len(pg.prims())
+    bb = g.boundingBox()
+    area = sum(p.intrinsicValue('measuredarea') for p in g.prims()) if g.prims() and g.prims()[0].type() == hou.primType.Polygon else None
+    return {'prims': len(g.prims()), 'pts': len(g.points()), 'groups': groups, 'bbox': [round(v, 4) for v in list(bb.minvec()) + list(bb.maxvec())], 'area': round(area, 3) if area else None}
+
+cur = {n: CH.parm(n).eval() for n in ('roof_curve_gable', 'roof_curve_ridge')}
+new_src = {}
+res = {}
+try:
+    for nm, key in NODES[COMP]:
+        n = comp.node(nm); new_src[nm] = n.parm('snippet').eval(); n.parm('snippet').set(n.userData(key))
+    res['original'] = measure()
+    for nm, key in NODES[COMP]:
+        comp.node(nm).parm('snippet').set(new_src[nm])
+    CH.parm('roof_curve_gable').set(0.0); CH.parm('roof_curve_ridge').set(0.0)
+    res['new_zero'] = measure()
+finally:
+    for nm, key in NODES[COMP]:
+        comp.node(nm).parm('snippet').set(new_src[nm])
+    CH.parm('roof_curve_gable').set(cur['roof_curve_gable']); CH.parm('roof_curve_ridge').set(cur['roof_curve_ridge'])
+a, b = res['original'], res['new_zero']
+res['same_prims'] = a['prims'] == b['prims']; res['same_pts'] = a['pts'] == b['pts']
+res['group_diff'] = {k: (a['groups'].get(k), b['groups'].get(k)) for k in set(a['groups']) | set(b['groups']) if a['groups'].get(k) != b['groups'].get(k)}
+result = res
+import json
+json.dump(res, open('/Users/zenray/Create/Build/Productions/ZenRayHoudini/LouisianaBayou/captures_procedural_roof/zero_curve_%s.json' % COMP, 'w'), indent=1)

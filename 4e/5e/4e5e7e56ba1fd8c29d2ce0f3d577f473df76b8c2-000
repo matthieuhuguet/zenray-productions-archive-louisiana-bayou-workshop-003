@@ -1,0 +1,33 @@
+{
+  "component": "Grass_System",
+  "active_version": "v001",
+  "versions": [
+    {
+      "version": "v001",
+      "label": "herbe-procedurale-recuperee",
+      "dir_name": "v001_herbe-procedurale-recuperee",
+      "timestamp": "2026-09-19 17:40:07",
+      "saved_at_iso": "2026-09-19T17:40:07+02:00",
+      "kind": "object",
+      "node_path": "/obj/Grass_System",
+      "hip_file": "graph.hiplc",
+      "proof_geo": {
+        "points": 403746,
+        "prims": 173034,
+        "bbox": [
+          [
+            -55.06589126586914,
+            -1.1712265014648438,
+            -55.1455078125
+          ],
+          [
+            55.17294692993164,
+            18.91797637939453,
+            55.17660903930664
+          ]
+        ]
+      },
+      "children_count": 13
+    }
+  ]
+}

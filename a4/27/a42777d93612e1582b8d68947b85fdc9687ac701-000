@@ -1,0 +1,85 @@
+# 11 October 2026 : runs in the ZenRayShards editor (queue). Imports the Louisiana Bayou lookdev textures and six FBX into /Game/ZenRayShards/LouisianaBayou/{Textures,Materials,Meshes}, builds two master materials (M_LB_Surface, M_LB_Glass) and six instances, assigns each instance to its mesh slot. Every value lives in lb_params.json. Idempotent: existing assets are re-imported or rebuilt in place, never deleted.
+# FR : importe textures et meshes de l'église, construit les matériaux maîtres et leurs instances, et les assigne aux meshes.
+import unreal, json
+P = json.load(open('/Users/zenray/Create/Build/Productions/ZenRayHoudini/LouisianaBayou/unreal/lb_params.json'))
+tools = unreal.AssetToolsHelpers.get_asset_tools(); eal = unreal.EditorAssetLibrary; mel = unreal.MaterialEditingLibrary
+R = P['root']; TD, MD, SD = R + '/Textures', R + '/Materials', R + '/Meshes'
+C = unreal.MaterialSamplerType
+# ---- textures
+tasks = []
+for name, (f, kind, wrap) in P['textures'].items():
+    t = unreal.AssetImportTask(); t.filename = f; t.destination_path = TD; t.destination_name = name; t.replace_existing = True; t.automated = True; t.save = True; tasks.append(t)
+tools.import_asset_tasks(tasks); TEX = {}
+for name, (f, kind, wrap) in P['textures'].items():
+    a = eal.load_asset(TD + '/' + name); assert a, name
+    if kind == 'color': a.set_editor_property('srgb', True); a.set_editor_property('compression_settings', unreal.TextureCompressionSettings.TC_DEFAULT)
+    elif kind == 'mask': a.set_editor_property('srgb', False); a.set_editor_property('compression_settings', unreal.TextureCompressionSettings.TC_MASKS)
+    else: a.set_editor_property('srgb', False); a.set_editor_property('compression_settings', unreal.TextureCompressionSettings.TC_NORMALMAP); a.set_editor_property('flip_green_channel', P['normal_flip_green'])
+    ad = unreal.TextureAddress.TA_CLAMP if wrap == 'clamp' else unreal.TextureAddress.TA_WRAP
+    a.set_editor_property('address_x', ad); a.set_editor_property('address_y', ad); eal.save_loaded_asset(a); TEX[name] = a
+print('textures', len(TEX))
+WHITE = eal.load_asset('/Engine/EngineResources/WhiteSquareTexture'); FLAT = eal.load_asset('/Engine/EngineMaterials/FlatNormal')
+def get_mat(name):
+    p = MD + '/' + name
+    if eal.does_asset_exist(p): m = eal.load_asset(p); mel.delete_all_material_expressions(m); return m
+    return tools.create_asset(name, MD, unreal.Material, unreal.MaterialFactoryNew())
+def conn(a, ao, b, bi): assert mel.connect_material_expressions(a, ao, b, bi), (ao, bi)
+def prop(a, ao, pr): assert mel.connect_material_property(a, ao, pr), pr
+def mk(m, cls, x, y, **kw):
+    n = mel.create_material_expression(m, cls, x, y)
+    for k, v in kw.items(): n.set_editor_property(k, v)
+    return n
+# ---- M_LB_Surface : BaseColor = tex * tint ; Roughness = lerp(scalar, tex.r, weight) ; Normal = lerp(flat, tex, strength)
+m = get_mat('M_LB_Surface'); X = unreal.MaterialExpressionTextureSampleParameter2D
+bct = mk(m, X, -900, -300, parameter_name='BaseColorTexture', texture=WHITE, sampler_type=C.SAMPLERTYPE_COLOR)
+tint = mk(m, unreal.MaterialExpressionVectorParameter, -900, -50, parameter_name='BaseColorTint', default_value=unreal.LinearColor(1, 1, 1, 1))
+# 11 October 2026 : Substrate is active in this project, direct connect_material_property(MP_BASE_COLOR) rendered uniform grey; everything goes through MakeMaterialAttributes (proven on CeramicAd and Lily).
+mma = mk(m, unreal.MaterialExpressionMakeMaterialAttributes, -150, 200)
+mul = mk(m, unreal.MaterialExpressionMultiply, -500, -200); conn(bct, 'RGB', mul, 'A'); conn(tint, '', mul, 'B'); conn(mul, '', mma, 'BaseColor')
+rs = mk(m, unreal.MaterialExpressionScalarParameter, -900, 150, parameter_name='Roughness', default_value=0.8)
+# 11 October 2026 : the default texture of a Masks sampler must itself be a linear TC_MASKS texture, an sRGB default (WhiteSquareTexture) makes the material fail to compile and every mesh falls back to the grey world grid.
+rt = mk(m, X, -900, 250, parameter_name='RoughnessTexture', texture=TEX['T_LB_RoofShingles_Roughness'], sampler_type=C.SAMPLERTYPE_MASKS)
+rw = mk(m, unreal.MaterialExpressionScalarParameter, -900, 500, parameter_name='RoughnessTextureWeight', default_value=0.0)
+rl = mk(m, unreal.MaterialExpressionLinearInterpolate, -500, 200); conn(rs, '', rl, 'A'); conn(rt, 'R', rl, 'B'); conn(rw, '', rl, 'Alpha'); conn(rl, '', mma, 'Roughness')
+nt = mk(m, X, -900, 650, parameter_name='NormalTexture', texture=FLAT, sampler_type=C.SAMPLERTYPE_NORMAL)
+ns = mk(m, unreal.MaterialExpressionScalarParameter, -900, 900, parameter_name='NormalStrength', default_value=0.0)
+up = mk(m, unreal.MaterialExpressionConstant3Vector, -900, 1000, constant=unreal.LinearColor(0, 0, 1, 1))
+nl = mk(m, unreal.MaterialExpressionLinearInterpolate, -500, 700); conn(up, '', nl, 'A'); conn(nt, 'RGB', nl, 'B'); conn(ns, '', nl, 'Alpha'); conn(nl, '', mma, 'Normal')
+m.set_editor_property('use_material_attributes', True); prop(mma, '', unreal.MaterialProperty.MP_MATERIAL_ATTRIBUTES)
+mel.recompile_material(m); eal.save_loaded_asset(m)
+# ---- M_LB_Glass : translucent, two sided
+g = get_mat('M_LB_Glass')
+gc = mk(g, unreal.MaterialExpressionVectorParameter, -600, 0, parameter_name='BaseColorTint', default_value=unreal.LinearColor(0.35, 0.42, 0.45, 1)); gm = mk(g, unreal.MaterialExpressionMakeMaterialAttributes, -150, 200); conn(gc, '', gm, 'BaseColor')
+gr = mk(g, unreal.MaterialExpressionScalarParameter, -600, 200, parameter_name='Roughness', default_value=0.08); conn(gr, '', gm, 'Roughness')
+go = mk(g, unreal.MaterialExpressionScalarParameter, -600, 350, parameter_name='Opacity', default_value=0.25); conn(go, '', gm, 'Opacity'); g.set_editor_property('use_material_attributes', True); prop(gm, '', unreal.MaterialProperty.MP_MATERIAL_ATTRIBUTES)
+g.set_editor_property('blend_mode', unreal.BlendMode.BLEND_TRANSLUCENT); g.set_editor_property('two_sided', True)
+mel.recompile_material(g); eal.save_loaded_asset(g)
+PARENT = {'M_LB_Surface': m, 'M_LB_Glass': g}
+# ---- instances
+MI = {}
+for name, spec in P['materials'].items():
+    p = MD + '/' + name
+    mi = eal.load_asset(p) if eal.does_asset_exist(p) else tools.create_asset(name, MD, unreal.MaterialInstanceConstant, unreal.MaterialInstanceConstantFactoryNew())
+    mi.set_editor_property('parent', PARENT[spec['parent']]); mel.clear_all_material_instance_parameters(mi)
+    for k, v in spec.items():
+        if k == 'parent': continue
+        if isinstance(v, str): mel.set_material_instance_texture_parameter_value(mi, k, TEX[v])
+        elif isinstance(v, list): mel.set_material_instance_vector_parameter_value(mi, k, unreal.LinearColor(v[0], v[1], v[2], 1))
+        else: mel.set_material_instance_scalar_parameter_value(mi, k, float(v))
+    mel.update_material_instance(mi); eal.save_loaded_asset(mi); MI[name] = mi
+print('materials', len(MI))
+# ---- meshes
+tasks = []
+for n in P['meshes']:
+    t = unreal.AssetImportTask(); t.filename = '%s/%s.fbx' % (P['fbx_dir'], n); t.destination_path = SD; t.destination_name = 'SM_' + n
+    t.automated = True; t.save = True; t.replace_existing = True
+    o = unreal.FbxImportUI(); o.import_mesh = True; o.import_textures = False; o.import_materials = False; o.import_as_skeletal = False; o.import_animations = False
+    sd = o.static_mesh_import_data; sd.combine_meshes = True; sd.generate_lightmap_u_vs = False
+    sd.normal_import_method = unreal.FBXNormalImportMethod.FBXNIM_IMPORT_NORMALS
+    t.options = o; tasks.append(t)
+tools.import_asset_tasks(tasks)
+for n, miname in P['meshes'].items():
+    sm = eal.load_asset('%s/SM_%s' % (SD, n)); assert sm, n
+    for i in range(len(sm.static_materials)): sm.set_material(i, MI[miname])
+    eal.save_loaded_asset(sm); b = sm.get_bounds()
+    print('SM_%s slots=%d origin=(%.1f,%.1f,%.1f) extent=(%.1f,%.1f,%.1f)' % (n, len(sm.static_materials), b.origin.x, b.origin.y, b.origin.z, b.box_extent.x, b.box_extent.y, b.box_extent.z))

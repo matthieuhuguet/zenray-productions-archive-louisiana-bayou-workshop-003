@@ -1,0 +1,49 @@
+# 16 October 2026 : STEP 1, roof curvature parameters. EN: the curvature is NOT a lattice on finished geometry any more ; every component that touches the roof line (Roof, WoodFacade, Armature) builds its own boards along the same height field dy(x, z) = -slope_sag * profile(u) - ridge_sag * ridge(z) * u, so the topology stays clean and every curvature is one parameter on the Church master. Parameters live on the Church (promoted, 6 only) and each component reads them by channel reference. FR : la courbure n'est plus un lattice, chaque composant dessine ses planches le long du meme champ de hauteur.
+import hou
+church = hou.node('/obj/Church')
+
+def add_church_parms():
+    ptg = church.parmTemplateGroup()
+    fol = ptg.findFolder('Roof Curvature')
+    names = ('roof_curve_gable', 'roof_curve_ridge', 'roof_curve_slope_bias', 'roof_curve_ridge_power', 'roof_curve_slices_u', 'roof_curve_slices_z')
+    if ptg.find('roof_curve_slope_bias') is None:
+        ptg.appendToFolder(ptg.findFolder('Roof Curvature'), hou.FloatParmTemplate('roof_curve_slope_bias', 'Slope Sag Position (0 eave, 1 ridge)', 1, default_value=(0.5,), min=0.1, max=0.9, min_is_strict=False, help='Where the deepest point of the slope sag lies, as a fraction of the slope from the eave (0) to the ridge (1).'))
+        ptg.appendToFolder(ptg.findFolder('Roof Curvature'), hou.FloatParmTemplate('roof_curve_ridge_power', 'Ridge Curve Shape (1 V, 2 parabola)', 1, default_value=(2.0,), min=0.5, max=6.0, help='Shape exponent of the ridge dip along the length: 1 = straight V, 2 = parabola, higher = flatter middle and sharper ends.'))
+        ptg.appendToFolder(ptg.findFolder('Roof Curvature'), hou.IntParmTemplate('roof_curve_slices_u', 'Curve Slices Along Slope', 1, default_value=(16,), min=1, max=64, help='Number of segments of every curved board along the slope. 1 = straight.'))
+        ptg.appendToFolder(ptg.findFolder('Roof Curvature'), hou.IntParmTemplate('roof_curve_slices_z', 'Curve Slices Along Length', 1, default_value=(24,), min=1, max=96, help='Number of segments of the roof deck along the ridge length. 1 = straight.'))
+    # clearer labels on the two existing parameters
+    g = ptg.find('roof_curve_gable'); g.setLabel('Slope Sag (m, front and back view)'); g.setHelp('Depth of the concave sag of each roof slope seen from the gable, in metres. 0 = straight slope.'); ptg.replace('roof_curve_gable', g)
+    r = ptg.find('roof_curve_ridge'); r.setLabel('Ridge Dip (m, side view)'); r.setHelp('How far the ridge dips in the middle of the church, in metres. 0 = straight ridge.'); ptg.replace('roof_curve_ridge', r)
+    church.setParmTemplateGroup(ptg)
+
+def add_component_parms(node, with_slices_z=False, with_rake=False):
+    ptg = node.parmTemplateGroup()
+    if ptg.find('curve_slope') is not None:
+        return
+    fol = hou.FolderParmTemplate('folder_roof_curve', 'Roof Curvature', folder_type=hou.folderType.Tabs)
+    fol.addParmTemplate(hou.FloatParmTemplate('curve_slope', 'Slope Sag (m)', 1, default_value=(0.2,), help='Linked to the Church master.'))
+    fol.addParmTemplate(hou.FloatParmTemplate('curve_slope_bias', 'Slope Sag Position', 1, default_value=(0.5,)))
+    fol.addParmTemplate(hou.FloatParmTemplate('curve_ridge', 'Ridge Dip (m)', 1, default_value=(0.3,)))
+    fol.addParmTemplate(hou.FloatParmTemplate('curve_ridge_power', 'Ridge Curve Shape', 1, default_value=(2.0,)))
+    fol.addParmTemplate(hou.IntParmTemplate('curve_slices_u', 'Slices Along Slope', 1, default_value=(16,)))
+    if with_slices_z:
+        fol.addParmTemplate(hou.IntParmTemplate('curve_slices_z', 'Slices Along Length', 1, default_value=(24,)))
+    if with_rake:
+        fol.addParmTemplate(hou.FloatParmTemplate('rake_inner_x', 'Rafter Crop X (0 = off)', 1, default_value=(0.0,), help='Rafters stop flat against the vertical plane x = +/- this value (inner face of the corner post). Linked to the Armature.'))
+    ptg.append(fol)
+    node.setParmTemplateGroup(ptg)
+
+def link(node, pairs):
+    for p, expr in pairs:
+        node.parm(p).setExpression(expr)
+
+add_church_parms()
+roof = church.node('Component_Roof'); arm = church.node('Component_Armature'); fac = church.node('Component_WoodFacade')
+add_component_parms(roof, with_slices_z=True, with_rake=True)
+add_component_parms(arm)
+add_component_parms(fac)
+common = [('curve_slope', 'ch("../roof_curve_gable")'), ('curve_slope_bias', 'ch("../roof_curve_slope_bias")'), ('curve_ridge', 'ch("../roof_curve_ridge")'), ('curve_ridge_power', 'ch("../roof_curve_ridge_power")'), ('curve_slices_u', 'ch("../roof_curve_slices_u")')]
+link(roof, common + [('curve_slices_z', 'ch("../roof_curve_slices_z")'), ('rake_inner_x', 'ch("../Component_Armature/width") * 0.5 - ch("../Component_Armature/beam_size") * 0.5')])
+link(arm, common)
+link(fac, common)
+result = {n.name(): [p.name() for p in n.parms() if p.name().startswith(('curve_', 'rake_'))] for n in (roof, arm, fac)}

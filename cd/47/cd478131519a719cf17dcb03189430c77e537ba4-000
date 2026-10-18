@@ -1,0 +1,30 @@
+# 9 October 2026 : classify the porch stair pieces and give the wooden ones the window wood. EN: pieces come from connectivity (piece_id), classified by bounding box; treads, rails, balusters, newel posts, caps and balls use M_WindowWood_04, every support (stringers, legs, skirts, panels) keeps the old wood tag so the white paint pass takes it. FR : classement des pièces d'escalier par taille ; bois des fenêtres pour marches, rampes, balustres, poteaux, boules.
+import hou
+geo = hou.pwd().geometry()
+WOOD = 'M_WindowWood_04'
+for nm in ('stair_part', 'grp'):
+    if geo.findPrimAttrib(nm) is None: geo.addAttrib(hou.attribType.Prim, nm, '')
+pieces = {}
+for pr in geo.prims():
+    pieces.setdefault(pr.attribValue('piece_id'), []).append(pr)
+def classify(prs):
+    xs = [v.point().position() for pr in prs for v in pr.vertices()]
+    sx = max(p[0] for p in xs) - min(p[0] for p in xs); sy = max(p[1] for p in xs) - min(p[1] for p in xs); sz = max(p[2] for p in xs) - min(p[2] for p in xs)
+    if len(prs) >= 40: return 'ball'
+    if sx > 1.5 and sy < 0.1 and sz < 0.6: return 'tread'          # the 5 step planks ; the landing deck (sz about 2 m) stays 'support' = white paint
+
+    if sy > 0.8 and sz > 1.3: return 'rail'
+    if sx < 0.03 and sz < 0.03: return 'baluster'
+    if sx <= 0.09 and sz <= 0.09 and sy > 0.5: return 'newel'
+    if sx <= 0.09 and sz <= 0.09 and sy <= 0.07: return 'newel_cap'
+    return 'support'
+# 9 October 2026 (Matthieu) : only the railing system uses the window wood; treads, landing, supports and skirts stay white paint. FR : seule la rampe prend le bois des fenêtres, marches, palier et supports restent en peinture blanche.
+WOOD_PARTS = {'ball', 'rail', 'baluster', 'newel', 'newel_cap', 'tread'}   # 9 October 2026 (Matthieu) : the five step planks take the window wood at the window resolution, the porch floor stays white paint
+for pid, prs in pieces.items():
+    part = classify(prs)
+    for pr in prs:
+        pr.setAttribValue('stair_part', part)
+        if part in WOOD_PARTS:
+            pr.setAttribValue('material_id', WOOD); pr.setAttribValue('material_name', '04 Bois des fenêtres'); pr.setAttribValue('Cd', (0.52, 0.58, 0.52)); pr.setAttribValue('grp', 'stair_wood')
+        else:
+            pr.setAttribValue('grp', 'stair_support')

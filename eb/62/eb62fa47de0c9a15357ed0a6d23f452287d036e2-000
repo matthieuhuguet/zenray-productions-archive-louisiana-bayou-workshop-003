@@ -1,0 +1,238 @@
+{
+  "component": "Cop_PeelPlates_01",
+  "version": "v001",
+  "label": "texturing_start",
+  "timestamp": "2026-09-18 11:27:36",
+  "src_hip": "/Users/zenray/Create/Build/Productions/ZenRayHoudini/LouisianaBayou/LouisianaBayou.hiplc",
+  "node_path": "/obj/Cop_PeelPlates_01",
+  "final_node": "hole_add",
+  "proof_res": 1024,
+  "children": [
+    {
+      "name": "bg_gray",
+      "type": "constant"
+    },
+    {
+      "name": "warp_cloud",
+      "type": "fractalnoise"
+    },
+    {
+      "name": "plates_warped",
+      "type": "distort"
+    },
+    {
+      "name": "plates_bin",
+      "type": "remap"
+    },
+    {
+      "name": "plates_varied",
+      "type": "blend"
+    },
+    {
+      "name": "plates_height",
+      "type": "remap"
+    },
+    {
+      "name": "plates_add",
+      "type": "blend"
+    },
+    {
+      "name": "rim_height",
+      "type": "remap"
+    },
+    {
+      "name": "rims_add",
+      "type": "blend"
+    },
+    {
+      "name": "warp_cloud2",
+      "type": "fractalnoise"
+    },
+    {
+      "name": "warp_cross",
+      "type": "distort"
+    },
+    {
+      "name": "plates_holed",
+      "type": "blend"
+    },
+    {
+      "name": "brick_idmap",
+      "type": "wrangle"
+    },
+    {
+      "name": "id_warp1",
+      "type": "distort"
+    },
+    {
+      "name": "id_warp2",
+      "type": "distort"
+    },
+    {
+      "name": "brick_drop",
+      "type": "remap"
+    },
+    {
+      "name": "brick_elev",
+      "type": "remap"
+    },
+    {
+      "name": "mottle_noise",
+      "type": "fractalnoise"
+    },
+    {
+      "name": "mottle_grade",
+      "type": "remap"
+    },
+    {
+      "name": "film_mottle",
+      "type": "blend"
+    },
+    {
+      "name": "fiber_noise",
+      "type": "fractalnoise"
+    },
+    {
+      "name": "fiber_signed",
+      "type": "remap"
+    },
+    {
+      "name": "fiber_add",
+      "type": "blend"
+    },
+    {
+      "name": "brick_grid",
+      "type": "wrangle"
+    },
+    {
+      "name": "shift_down",
+      "type": "xform"
+    },
+    {
+      "name": "rim_top",
+      "type": "blend"
+    },
+    {
+      "name": "brick_grid2",
+      "type": "wrangle"
+    },
+    {
+      "name": "warp2a",
+      "type": "distort"
+    },
+    {
+      "name": "warp2b",
+      "type": "distort"
+    },
+    {
+      "name": "plates_bin2",
+      "type": "remap"
+    },
+    {
+      "name": "plates_cut",
+      "type": "blend"
+    },
+    {
+      "name": "rim_varied",
+      "type": "blend"
+    },
+    {
+      "name": "shift_up",
+      "type": "xform"
+    },
+    {
+      "name": "bot_band",
+      "type": "blend"
+    },
+    {
+      "name": "bot_height",
+      "type": "remap"
+    },
+    {
+      "name": "shadow_add",
+      "type": "blend"
+    },
+    {
+      "name": "micro_noise",
+      "type": "fractalnoise"
+    },
+    {
+      "name": "micro_signed",
+      "type": "remap"
+    },
+    {
+      "name": "micro_add",
+      "type": "blend"
+    },
+    {
+      "name": "peel_noise",
+      "type": "fractalnoise"
+    },
+    {
+      "name": "peel_cut",
+      "type": "remap"
+    },
+    {
+      "name": "peel_eat",
+      "type": "blend"
+    },
+    {
+      "name": "drop_eat_cut",
+      "type": "remap"
+    },
+    {
+      "name": "drop_eat",
+      "type": "blend"
+    },
+    {
+      "name": "drop_noise",
+      "type": "fractalnoise"
+    },
+    {
+      "name": "zone_noise",
+      "type": "fractalnoise"
+    },
+    {
+      "name": "zone_cut",
+      "type": "remap"
+    },
+    {
+      "name": "zone_mult",
+      "type": "blend"
+    },
+    {
+      "name": "curl_mask",
+      "type": "remap"
+    },
+    {
+      "name": "curl_plates",
+      "type": "blend"
+    },
+    {
+      "name": "curl_height",
+      "type": "remap"
+    },
+    {
+      "name": "curl_add",
+      "type": "blend"
+    },
+    {
+      "name": "hole_mask",
+      "type": "blend"
+    },
+    {
+      "name": "hole_micro",
+      "type": "blend"
+    },
+    {
+      "name": "hole_add",
+      "type": "blend"
+    }
+  ],
+  "external_inputs": [],
+  "hip_file": "graph.hiplc",
+  "proof_file": "proof.png",
+  "levels": {
+    "error": "[Errno 2] No such file or directory: '/Users/zenray/Create/Build/Productions/ZenRayHoudini/LouisianaBayou/snapshots/LouisianaBayou/Cop_PeelPlates_01/v001_texturing_start/proof.png'"
+  }
+}

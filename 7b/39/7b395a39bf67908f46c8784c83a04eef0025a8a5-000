@@ -1,0 +1,37 @@
+# 9 October 2026 : find the roof plane homography that makes the tile centroids fall into sharp ROWS, then report the number of rows and tiles per row.
+# EN: random search over the four corners of the roof quad; objective = sum of squared histogram counts of v (rows are sharp when the plane is right).
+# FR : on cherche la homographie du plan de toit qui rend les rangées les plus nettes, puis on compte rangées et tuiles.
+import sys, json, numpy as np
+rng = np.random.default_rng(7)
+data = json.load(open(sys.argv[1]))
+def H(src, dst):
+    A = []
+    for (x, y), (u, v) in zip(src, dst):
+        A.append([x, y, 1, 0, 0, 0, -u*x, -u*y, -u]); A.append([0, 0, 0, x, y, 1, -v*x, -v*y, -v])
+    return np.linalg.svd(np.array(A, float))[2][-1].reshape(3, 3)
+def project(c, quad, W, Hm):
+    h = H(quad, [(0, 0), (W, 0), (W, Hm), (0, Hm)]); p = np.c_[c, np.ones(len(c))] @ h.T; return p[:, :2] / p[:, 2:3]
+def score(v, Hm, bins):
+    h = np.histogram(v, bins=bins, range=(0, Hm))[0]; return float((h.astype(float) ** 2).sum())
+CFG = {'church': ([(50,745),(655,676),(890,362),(285,497)], 8.24, 3.27, 12.0),
+       'porch':  ([(735,740),(925,722),(1042,572),(862,600)], 1.45, 1.40, 5.0)}
+out = {}
+for name, (quad0, W, Hm, rad) in CFG.items():
+    c = np.array(data[name]['cent']); q0 = np.array(quad0, float)
+    best = (-1, q0)
+    for it in range(6000):
+        q = q0 + rng.uniform(-rad, rad, q0.shape) * (1 if it else 0)
+        uv = project(c, q, W, Hm)
+        if (uv[:, 1] < -0.3).any() or (uv[:, 1] > Hm + 0.3).any(): continue
+        s = score(np.clip(uv[:, 1], 0, Hm), Hm, 90)
+        if s > best[0]: best = (s, q)
+    q = best[1]; uv = project(c, q, W, Hm); v = uv[:, 1]
+    # rows: cluster v by gaps on a smoothed histogram
+    h, ed = np.histogram(v, bins=300, range=(0, Hm)); k = np.convolve(h, np.ones(3)/3, mode='same')
+    peaks = [i for i in range(1, len(k)-1) if k[i] > 0.35*k.max() and k[i] >= k[i-1] and k[i] > k[i+1]]
+    # merge peaks closer than 60 percent of the median spacing
+    cen = [ (ed[i]+ed[i+1])/2 for i in peaks ]
+    print(name, 'tiles', len(c), 'quad', np.round(q,1).tolist(), 'score', best[0])
+    print(' peak v (m):', np.round(cen, 2).tolist()); 
+    out[name] = {'quad': q.tolist(), 'uv': uv.tolist(), 'peaks': cen}
+json.dump(out, open(sys.argv[1] + '.fit.json', 'w'))

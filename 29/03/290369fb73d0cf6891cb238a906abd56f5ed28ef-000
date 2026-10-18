@@ -1,0 +1,74 @@
+{
+  "component": "Cop_M_WoodShinglesRoof_03",
+  "version": "v001",
+  "label": "texturing_start",
+  "timestamp": "2026-09-18 11:27:26",
+  "src_hip": "/Users/zenray/Create/Build/Productions/ZenRayHoudini/LouisianaBayou/LouisianaBayou.hiplc",
+  "node_path": "/obj/Cop_M_WoodShinglesRoof_03",
+  "final_node": "export_height",
+  "proof_res": 1024,
+  "children": [
+    {
+      "name": "base_plate",
+      "type": "constant"
+    },
+    {
+      "name": "shingle_grain",
+      "type": "fractalnoise"
+    },
+    {
+      "name": "shingle_chatter",
+      "type": "fractalnoise"
+    },
+    {
+      "name": "blend_shingles",
+      "type": "blend"
+    },
+    {
+      "name": "remap_height",
+      "type": "remap"
+    },
+    {
+      "name": "final_height",
+      "type": "blend"
+    },
+    {
+      "name": "export_height",
+      "type": "rop_image"
+    },
+    {
+      "name": "quixel_basecolor",
+      "type": "file"
+    },
+    {
+      "name": "quixel_roughness",
+      "type": "file"
+    },
+    {
+      "name": "quixel_normal",
+      "type": "file"
+    },
+    {
+      "name": "quixel_ao",
+      "type": "file"
+    },
+    {
+      "name": "quixel_displacement",
+      "type": "file"
+    },
+    {
+      "name": "preview_quixel_pbr",
+      "type": "previewmaterial"
+    },
+    {
+      "name": "quixel_hue_adjust",
+      "type": "hsv"
+    }
+  ],
+  "external_inputs": [],
+  "hip_file": "graph.hiplc",
+  "proof_file": "proof.png",
+  "levels": {
+    "error": "[Errno 2] No such file or directory: '/Users/zenray/Create/Build/Productions/ZenRayHoudini/LouisianaBayou/snapshots/LouisianaBayou/Cop_M_WoodShinglesRoof_03/v001_texturing_start/proof.png'"
+  }
+}

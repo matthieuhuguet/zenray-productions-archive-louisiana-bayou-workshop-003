@@ -1,0 +1,23 @@
+# 11 October 2026 : runs in the ZenRayShards editor (queue). One still of L_LouisianaBayouLookdev through LB_Camera_PC with the Movie Render Queue (take_high_res_screenshot is unreliable, Protocol1 phase H trap f). Output in unreal/captures.
+# FR : une image fixe du niveau de l'église par le Movie Render Queue, depuis la caméra Cycles convertie.
+import unreal, json
+P = json.load(open('/Users/zenray/Create/Build/Productions/ZenRayHoudini/LouisianaBayou/unreal/lb_params.json'))
+eal = unreal.EditorAssetLibrary; les = unreal.get_editor_subsystem(unreal.LevelEditorSubsystem); eas = unreal.get_editor_subsystem(unreal.EditorActorSubsystem); tools = unreal.AssetToolsHelpers.get_asset_tools()
+les.load_level(P['level']); world = unreal.EditorLevelLibrary.get_editor_world(); assert world.get_name() == 'L_LouisianaBayouLookdev', world.get_name()
+cam = [a for a in eas.get_all_level_actors() if a.get_actor_label() == P['render']['camera']]; assert cam, 'camera missing'; cam = cam[0]
+SD, SN = P['root'] + '/Cinematics', 'LS_LouisianaBayouLookdev'
+if eal.does_asset_exist(SD + '/' + SN):
+    seq = eal.load_asset(SD + '/' + SN)
+    for b in list(unreal.MovieSceneSequenceExtensions.get_bindings(seq)): unreal.MovieSceneBindingExtensions.remove(b)
+    for t in list(unreal.MovieSceneSequenceExtensions.get_tracks(seq)): unreal.MovieSceneSequenceExtensions.remove_track(seq, t)
+else: seq = tools.create_asset(SN, SD, unreal.LevelSequence, unreal.LevelSequenceFactoryNew())
+seq.set_display_rate(unreal.FrameRate(24, 1)); seq.set_playback_start(0); seq.set_playback_end(1); cut = seq.add_track(unreal.MovieSceneCameraCutTrack); b = seq.add_possessable(cam); cs = cut.add_section(); cs.set_range(0, 1)
+cs.set_camera_binding_id(unreal.MovieSceneSequenceExtensions.get_binding_id(seq, b)); eal.save_loaded_asset(seq)
+R = P['render']; sub = unreal.get_editor_subsystem(unreal.MoviePipelineQueueSubsystem); queue = sub.get_queue(); queue.delete_all_jobs(); job = queue.allocate_new_job(unreal.MoviePipelineExecutorJob)
+job.sequence = unreal.SoftObjectPath(SD + '/' + SN); job.map = unreal.SoftObjectPath(world.get_path_name().split('.')[0] + '.' + world.get_name()); job.job_name = 'LouisianaBayouLookdev'; cfg = job.get_configuration()
+out = cfg.find_or_add_setting_by_class(unreal.MoviePipelineOutputSetting); out.output_resolution = unreal.IntPoint(R['res'][0], R['res'][1]); out.output_directory = unreal.DirectoryPath(R['out']); out.file_name_format = R['name'] + '_{frame_number}'
+out.zero_pad_frame_numbers = 4; out.override_existing_output = True; out.use_custom_playback_range = True; out.custom_start_frame = 0; out.custom_end_frame = 1
+cfg.find_or_add_setting_by_class(unreal.MoviePipelineDeferredPassBase); cfg.find_or_add_setting_by_class(unreal.MoviePipelineImageSequenceOutput_PNG)
+aa = cfg.find_or_add_setting_by_class(unreal.MoviePipelineAntiAliasingSetting); aa.override_anti_aliasing = True; aa.anti_aliasing_method = unreal.AntiAliasingMethod.AAM_NONE; aa.spatial_sample_count = R['spatial']; aa.temporal_sample_count = 1; aa.render_warm_up_count = R['warmup']; aa.engine_warm_up_count = R['warmup']
+cv = cfg.find_or_add_setting_by_class(unreal.MoviePipelineConsoleVariableSetting); cv.add_or_update_console_variable('r.DepthOfFieldQuality', 0)
+sub.render_queue_with_executor(unreal.MoviePipelinePIEExecutor); print('render started', R['out'])

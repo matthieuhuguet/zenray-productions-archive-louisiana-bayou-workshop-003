@@ -1,0 +1,42 @@
+# 9 October 2026 : FAST debug capture of the /obj viewport (OpenGL flipbook, about a second per image). EN: set `views = [(name, (x,y,z), (tx,ty,tz), focal)]` then exec this file ; nothing is rendered, the viewer camera and tab are restored. Use it for geometry, normals and lighting checks ; use the checker UvCheck.py for UV numbers ; use Cycles only for one final low resolution image. FR : capture rapide de la vue OBJ, aucun rendu, la vue de l'utilisateur est restaurée.
+import hou, os
+OUT = globals().get('CAPTURE_OUT', '/Users/zenray/.claude/tmp/tmp-houdini-september-2026/tmp-bayou-louisiana/03_work/uv-fix/')
+W, H = globals().get('CAP_W', 960), globals().get('CAP_H', 600)
+os.makedirs(OUT, exist_ok=True)
+# a private floating viewer on /obj : the user's Solaris/Cycles viewer is never touched. FR : visionneuse flottante privée sur /obj, celle de l'utilisateur n'est pas touchée.
+sv = next((p for p in hou.ui.paneTabs() if p.type() == hou.paneTabType.SceneViewer and p.pwd().path() == '/obj'), None); floating = None
+if sv is None:
+    floating = hou.ui.curDesktop().createFloatingPaneTab(hou.paneTabType.SceneViewer, position=(50, 50), size=(W + 40, H + 80)); sv = floating; sv.setPwd(hou.node('/obj'))
+old_tab = None if floating else sv.pane().currentTab()
+if old_tab is not None: sv.setIsCurrentTab()
+vp = sv.curViewport(); old_cam = vp.camera(); old_view = vp.defaultCamera().stash()
+cam = hou.node('/obj').node('cam_debug_capture') or hou.node('/obj').createNode('cam', 'cam_debug_capture')
+SHOW = globals().get('SHOW_OBJECTS', ['Church'])                      # only these /obj objects are visible during the capture, flags restored after
+flags = {n: n.isDisplayFlagSet() for n in hou.node('/obj').children() if hasattr(n, 'isDisplayFlagSet')}
+for n in flags:
+    if n.name() != 'cam_debug_capture': n.setDisplayFlag(n.name() in SHOW)
+done = []
+ds_ = vp.settings().displaySet(hou.displaySetType.DisplayModel); old_shade = ds_.shadedMode()
+try:
+    ds_.setShadedMode(hou.glShadingType.SmoothWire if False else hou.glShadingType.Smooth)          # 9 October 2026 : always capture shaded, whatever the viewer was left on. FR : toujours en ombré.
+    for name, pos, tgt, focal in views:
+        cam.parm('resx').set(W); cam.parm('resy').set(H); cam.parm('aspect').set(1.0)      # 9 October 2026 : the camera resolution MUST match the flipbook resolution, otherwise the capture is stretched (Matthieu, 9 October 2026). FR : la résolution de la caméra doit égaler celle du flipbook, sinon l'image est étirée.
+        cam.parm('focal').set(focal); cam.parmTuple('t').set(pos)
+        cam.parmTuple('r').set(hou.hmath.buildRotateLookAt(hou.Vector3(pos), hou.Vector3(tgt), hou.Vector3((0, 1, 0))).extractRotates())
+        vp.setCamera(cam)
+        fb = sv.flipbookSettings().stash(); p = OUT + name + '.png'
+        fb.output(p); fb.outputToMPlay(False); fb.useResolution(True); fb.resolution((W, H)); fb.cropOutMaskOverlay(True); fb.frameRange((hou.frame(), hou.frame()))
+        sv.flipbook(vp, fb); done.append(p)
+finally:
+    try:
+        if old_shade is not None: ds_.setShadedMode(old_shade)
+    except Exception: pass
+    for n, f in flags.items():
+        try: n.setDisplayFlag(f)
+        except Exception: pass
+    vp.setCamera(old_cam)
+    if old_cam is None: vp.setDefaultCamera(old_view)
+    cam.destroy()
+    if old_tab is not None: old_tab.setIsCurrentTab()
+    if floating is not None: floating.pane().tabs()[0].close() if floating.pane() and len(floating.pane().tabs()) > 1 else floating.close()
+result = done

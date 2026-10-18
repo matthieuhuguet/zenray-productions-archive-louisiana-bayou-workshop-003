@@ -1,0 +1,27 @@
+# 10 October 2026 : FAST 4 VIEW GHOST WIREFRAME CONTACT SHEET (Houdini VK on /stage). EN: set TARGET (x,y,z), DIST (metres), optional NAME and DIR before exec ; four flipbooks (front, side, top, perspective) are composited on dark grey and pasted into ONE 2 x 2 sheet, the user's viewport camera is restored. Use it whenever a geometry has to be inspected and modified quickly. FR : planche de 4 vues wireframe ghost, une seule image a lire.
+import hou, os
+from PIL import Image
+T = globals().get('TARGET', (0.0, 6.7, 6.23)); D = globals().get('DIST', 2.0); NAME = globals().get('NAME', 'sheet4')
+OUT = globals().get('DIR', '/Users/zenray/.claude/tmp/tmp-houdini-september-2026/tmp-bayou-louisiana/03_work/uv-fix/')
+W = H = globals().get('SIZE', 600); FOCAL = globals().get('FOCAL', 40)
+views = [('front', (T[0], T[1], T[2] + D)), ('side', (T[0] + D, T[1], T[2])), ('top', (T[0] + 0.001, T[1] + D, T[2])), ('persp', (T[0] + D * 0.7, T[1] + D * 0.5, T[2] + D * 0.8))]
+sv = next(p for p in hou.ui.paneTabs() if p.type() == hou.paneTabType.SceneViewer and p.pwd().path() == '/stage')
+vp = sv.curViewport(); old_cam = vp.camera(); old_view = vp.defaultCamera().stash()
+cam = hou.node('/obj').node('cam_debug_capture') or hou.node('/obj').createNode('cam', 'cam_debug_capture')
+sheet = Image.new('RGB', (W * 2, H * 2), (60, 60, 60))
+try:
+    for i, (vn, pos) in enumerate(views):
+        cam.parm('resx').set(W); cam.parm('resy').set(H); cam.parm('aspect').set(1.0); cam.parm('focal').set(FOCAL)
+        cam.parmTuple('t').set(pos)
+        up = (0, 0, -1) if vn == 'top' else (0, 1, 0)
+        cam.parmTuple('r').set(hou.hmath.buildRotateLookAt(hou.Vector3(pos), hou.Vector3(T), hou.Vector3(up)).extractRotates())
+        vp.setCamera(cam)
+        p = OUT + '%s_%s.png' % (NAME, vn)
+        fb = sv.flipbookSettings().stash(); fb.output(p); fb.outputToMPlay(False); fb.useResolution(True); fb.resolution((W, H)); fb.frameRange((hou.frame(), hou.frame()))
+        sv.flipbook(vp, fb)
+        im = Image.open(p).convert('RGBA'); sheet.paste(Image.alpha_composite(Image.new('RGBA', im.size, (60, 60, 60, 255)), im).convert('RGB'), ((i % 2) * W, (i // 2) * H))
+finally:
+    vp.setCamera(old_cam)
+    if old_cam is None: vp.setDefaultCamera(old_view)
+    cam.destroy()
+sheet.save(OUT + NAME + '_sheet.png'); result = OUT + NAME + '_sheet.png'

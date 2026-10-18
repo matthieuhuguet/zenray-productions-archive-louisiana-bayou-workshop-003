@@ -1,0 +1,45 @@
+{
+  "component": "Entrance_Arch",
+  "version": "v001",
+  "label": "arche-entree-avec-croix",
+  "timestamp": "2026-09-19 17:40:40",
+  "saved_at_iso": "2026-09-19T17:40:40+02:00",
+  "src_hip": "/Users/zenray/Create/Build/Productions/ZenRayHoudini/LouisianaBayou/LouisianaBayou.hiplc",
+  "node_path": "/obj/Entrance_Arch",
+  "children": [
+    {
+      "name": "build_arch",
+      "type": "python"
+    },
+    {
+      "name": "tone",
+      "type": "color"
+    },
+    {
+      "name": "normals",
+      "type": "normal"
+    },
+    {
+      "name": "OUT_entrance_arch",
+      "type": "null"
+    }
+  ],
+  "external_inputs": [],
+  "hip_file": "graph.hiplc",
+  "proof_geo": {
+    "points": 3636,
+    "prims": 2928,
+    "bbox": [
+      [
+        -1.082200050354004,
+        0.0,
+        -0.09635999798774719
+      ],
+      [
+        1.082200050354004,
+        3.632499933242798,
+        0.11400000005960464
+      ]
+    ]
+  }
+}

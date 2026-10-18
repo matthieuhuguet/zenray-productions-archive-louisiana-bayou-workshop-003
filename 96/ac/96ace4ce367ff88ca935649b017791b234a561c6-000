@@ -1,0 +1,67 @@
+# 10 October 2026 (v8 lower end cropped by the post inner face) (v7, rafter ends extended to the centre plane then cut flat) (v6) / (v5) : church cross + inverted arrow, ONE component. EN: the armature generator now builds the cross post as the SAME beam as the king post and starts the arrow exactly at the top of window B, so this node only (1) makes the crossbar thinner in depth, centred on the post depth, (2) gives post, crossbar and arms one piece_id and px_per_m = 1024. Pieces are found by shape on the front gable (z 6.1 to 6.45). FR : croix et fleche inversee = un seul composant ; la geometrie vient du generateur, ce noeud amincit le croisillon et unifie les identifiants.
+import hou
+import numpy as np
+geo = hou.pwd().geometry()
+CROSSBAR_DEPTH_RATIO = 0.78
+PX_PER_M = 1024.0
+win = hou.node(hou.pwd().parent().path() + '/Component_WindowB').geometry().boundingBox()
+WIN_TOP = win.maxvec()[1]
+for nm, dv in (('px_per_m', 0.0),):
+    if geo.findPrimAttrib(nm) is None: geo.addAttrib(hou.attribType.Prim, nm, dv)
+pieces = {}
+for pr in geo.prims(): pieces.setdefault(pr.attribValue('piece_id'), []).append(pr)
+def box(prs):
+    P = np.array([v.point().position() for pr in prs for v in pr.vertices()], float)
+    return P.min(axis=0), P.max(axis=0)
+# the front gable is the one with the highest z extent. FR : pignon avant.
+post = bar = None; arches = []
+for pid, prs in pieces.items():
+    lo, hi = box(prs); sx, sy = hi[0] - lo[0], hi[1] - lo[1]
+    if not (6.1 < lo[2] and hi[2] < 6.45 and abs(lo[0] + hi[0]) < 0.8 and lo[1] > WIN_TOP - 0.4 and hi[1] < 9.5): continue
+    if sx < 0.2 and sy > 1.0: post = (prs, lo, hi)
+    elif sx > 0.6 and sy < 0.2: bar = (prs, lo, hi)
+    elif 0.2 < sx < 0.6 and 0.2 < sy < 1.0: arches.append((prs, lo, hi))
+def move_points(prs, fn):
+    done = set()
+    for pr in prs:
+        for v in pr.vertices():
+            pt = v.point()
+            if pt.number() in done: continue
+            done.add(pt.number()); pt.setPosition(fn(pt.position()))
+if post and bar:
+    zc = (post[1][2] + post[2][2]) / 2.0
+    zb = (bar[1][2] + bar[2][2]) / 2.0
+    move_points(bar[0], lambda p: (p[0], p[1], zc + (p[2] - zb) * CROSSBAR_DEPTH_RATIO))
+
+# 10 October 2026 : ROTATED BEAM ENDS ARE CROPPED BY A STRAIGHT PLANE. EN: the two gable rafters of each gable (pieces whose box is long in x and y, thin in z) cross each other by 0.04 m at the apex with angled end caps ; every point past the vertical plane x = 0 is projected onto it, so each rafter ends flat against the king post and no angled face overlaps the other rafter (same result as a boolean with a straight cube, without a second solid). FR : le bout oblique est coupe par un plan droit, plus aucune face qui se chevauche.
+APEX_X = 0.0
+CAP_REACH = 0.12      # metres : points within this distance of the tip in x belong to the end cap. FR : points du bout.
+for pid, prs in pieces.items():
+    lo, hi = box(prs); sx, sy, sz = hi[0] - lo[0], hi[1] - lo[1], hi[2] - lo[2]
+    if not (sx > 2.5 and sy > 2.5 and sz < 0.3): continue
+    left = (lo[0] + hi[0]) / 2.0 < 0
+    n = (sx * sx + sy * sy) ** 0.5; dx, dy = sx / n, sy / n          # beam axis in the gable plane (rising toward the apex). FR : axe de la poutre.
+    ax = (dx, dy) if left else (-dx, dy)
+    def to_cut(p, ax=ax, left=left):
+        # 10 October 2026 v7 : the angled end cap is EXTENDED along the beam axis until it meets the plane x = 0, so top and bottom edges both reach the centre line and the cut is a flat vertical face (the previous clamp left a notch). FR : on prolonge le bout le long de l'axe jusqu'au plan x = 0.
+        if (left and p[0] > hi[0] - CAP_REACH) or (not left and p[0] < lo[0] + CAP_REACH):
+            t = (APEX_X - p[0]) / ax[0]
+            return (APEX_X, p[1] + ax[1] * t, p[2])
+        return p
+    move_points(prs, to_cut)
+    # 10 October 2026 v8 : LOWER END, same method. EN: the straight corner post is never cut ; the inclined rafter is cropped by the vertical plane of the post inner face (x = +/- (width / 2 - beam_size / 2)), the end points slide along the beam axis onto that plane, so the rafter ends flat against the post and no side face of the rafter runs inside the post. FR : bout bas, meme methode ; le poteau droit n'est jamais coupe, le chevron s'arrete a plat contre sa face interieure.
+    arm = hou.node(hou.pwd().parent().path() + '/Component_Armature')
+    x_in = arm.parm('width').eval() * 0.5 - arm.parm('beam_size').eval() * 0.5
+    def to_post(p, ax=ax, left=left):
+        if left and p[0] < -x_in:
+            t = (-x_in - p[0]) / ax[0]; return (-x_in, p[1] + ax[1] * t, p[2])
+        if (not left) and p[0] > x_in:
+            t = (x_in - p[0]) / ax[0]; return (x_in, p[1] + ax[1] * t, p[2])
+        return p
+    move_points(prs, to_post)
+members = [x for x in [post, bar] + arches if x]
+if members:
+    comp_id = members[0][0][0].attribValue('piece_id')
+    for prs, lo, hi in members:
+        for pr in prs:
+            pr.setAttribValue('piece_id', comp_id); pr.setAttribValue('px_per_m', PX_PER_M)

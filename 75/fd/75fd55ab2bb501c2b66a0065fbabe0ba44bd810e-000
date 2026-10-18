@@ -1,0 +1,51 @@
+# 9 October 2026 : window wood UV for the railing (hand rails, balusters, newel posts, caps, balls). EN: the grain follows each PIECE axis (rails along their slope, balusters and posts upright, caps along x), every face is mapped in its own plane with u as close as possible to that axis; one shared density, one plank band per class; balls use a cube projection (six planar cells in one band) so no pole stretching. FR : le fil du bois suit l'axe de la pièce, boules en projection cubique.
+import hou, math, random
+import numpy as np
+geo = hou.pwd().geometry()
+BAND = {'tread': (0.825, 0.990), 'rail': (0.675, 0.805), 'baluster': (0.675, 0.805), 'newel': (0.825, 0.990), 'newel_cap': (0.825, 0.990), 'ball': (0.675, 0.805)}
+U0, U1 = 0.012, 0.988
+D_MAX = 0.65                       # the WINDOW density (uv per metre) : same texel size on the rail, the step planks and the windows ; a face too long or too tall for its band is scaled down alone
+sel = [pr for pr in geo.prims() if pr.attribValue('grp') == 'stair_wood']
+if geo.findVertexAttrib('uv') is None: geo.addAttrib(hou.attribType.Vertex, 'uv', (0.0, 0.0, 0.0))
+pieces = {}
+for pr in sel: pieces.setdefault(pr.attribValue('piece_id'), []).append(pr)
+def piece_axis(prs, part):
+    P = np.array([v.point().position() for pr in prs for v in pr.vertices()], float)
+    ext = P.max(axis=0) - P.min(axis=0)
+    if part == 'rail':                                   # slope direction = principal axis of the piece
+        w, V = np.linalg.eigh(np.cov((P - P.mean(axis=0)).T) + 1e-12 * np.eye(3)); ax = V[:, -1]
+    elif part in ('baluster', 'newel'): ax = np.array([0.0, 1.0, 0.0])
+    else: ax = np.array([1.0, 0.0, 0.0])
+    return ax / np.linalg.norm(ax)
+def face_frame(ax, n):
+    e1 = ax - np.dot(ax, n) * n
+    if np.linalg.norm(e1) < 0.2:                         # end face: any in-plane direction, horizontal first
+        e1 = np.cross(n, np.array([0.0, 1.0, 0.0]))
+        if np.linalg.norm(e1) < 0.2: e1 = np.cross(n, np.array([1.0, 0.0, 0.0]))
+    e1 = e1 / np.linalg.norm(e1); e2 = np.cross(n, e1); return e1, e2 / np.linalg.norm(e2)
+isl = []
+for pid, prs in pieces.items():
+    part = prs[0].attribValue('stair_part')
+    if part == 'ball': continue
+    ax = piece_axis(prs, part)
+    for pr in prs:
+        n = np.array(pr.normal()); P = np.array([v.point().position() for v in pr.vertices()], float)
+        e1, e2 = face_frame(ax, n); a = P @ e1; b = P @ e2
+        isl.append({'pr': pr, 'part': part, 'a': a, 'b': b, 'w': np.ptp(a), 'h': np.ptp(b), 'pid': pid})
+D = D_MAX
+for it in isl:
+    lo, hi = BAND[it['part']]; us = U0                                   # bottom left corner of the band, always (Matthieu, 9 October 2026)
+    D = min(D_MAX, (U1 - U0) / max(it['w'], 1e-6), (hi - lo - 0.01) / max(it['h'], 1e-6))
+    for v, a, b in zip(it['pr'].vertices(), it['a'], it['b']):
+        v.setAttribValue('uv', (float(us + (a - it['a'].min()) * D), float(lo + 0.005 + (b - it['b'].min()) * D), 0.0))
+# balls : cube projection, six planar cells side by side in one band
+for pid, prs in pieces.items():
+    if prs[0].attribValue('stair_part') != 'ball': continue
+    P = np.array([v.point().position() for pr in prs for v in pr.vertices()], float); c = (P.min(axis=0) + P.max(axis=0)) / 2; R = float((P.max(axis=0) - P.min(axis=0)).max() / 2)
+    lo, hi = BAND['ball']; cell = 2 * R * D * 1.08; us = U0
+    for pr in prs:
+        n = np.array(pr.normal()); ax = int(np.argmax(np.abs(n))); idx = ax * 2 + (1 if n[ax] < 0 else 0)
+        ia, ib = {0: (2, 1), 1: (0, 2), 2: (0, 1)}[ax]
+        for v in pr.vertices():
+            p = np.array(v.point().position()) - c + R
+            v.setAttribValue('uv', (float(us + idx * cell + p[ia] * D), float(lo + 0.005 + p[ib] * D), 0.0))

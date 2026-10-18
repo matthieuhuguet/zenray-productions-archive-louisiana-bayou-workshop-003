@@ -1,0 +1,40 @@
+# 9 October 2026 : count the coloured shingles of the reference roof (chatgpt-index-uv.png) and measure their layout.
+# EN: segment each tile by colour (boundaries = colour jumps), label connected regions, then cluster centroids into rows and columns along the roof plane.
+# FR : compte exact des tuiles colorées de la référence, répartition en rangées et colonnes.
+import sys, json
+import numpy as np
+from PIL import Image, ImageDraw
+from scipy import ndimage as ndi
+IMG = sys.argv[1]; OUT = sys.argv[2]
+im = Image.open(IMG).convert('RGB'); W, H = im.size
+a = np.asarray(im).astype(float)
+POLYS = {   # polygons of the two visible roof planes, in the 1254 px reference
+ 'church': [(50,745),(285,497),(890,362),(655,676)],
+ 'porch':  [(735,740),(925,722),(1042,572),(862,600)],
+}
+res = {}
+vis = im.copy(); d = ImageDraw.Draw(vis)
+for name, poly in POLYS.items():
+    m = Image.new('L', (W, H), 0); ImageDraw.Draw(m).polygon(poly, fill=255); m = np.asarray(m) > 0
+    hsv = np.asarray(im.convert('HSV')).astype(float)
+    sat = hsv[..., 1] / 255.0; val = hsv[..., 2] / 255.0
+    roof = m & (sat > 0.35) & (val > 0.35)
+    # colour boundaries
+    g = np.zeros((H, W))
+    for ch in range(3):
+        gy, gx = np.gradient(a[..., ch]); g = np.maximum(g, np.hypot(gx, gy))
+    inner = roof & (g < 28)
+    inner = ndi.binary_erosion(inner, iterations=1)
+    lab, n = ndi.label(inner)
+    areas = ndi.sum(np.ones_like(lab), lab, index=np.arange(1, n + 1))
+    keep = [i + 1 for i, ar in enumerate(areas) if ar > 25]
+    cent = np.array([ndi.center_of_mass(lab == k) for k in keep])[:, ::-1]   # x, y
+    ar = np.array([areas[k - 1] for k in keep])
+    res[name] = {'n': len(keep), 'area_median': float(np.median(ar)), 'area_p10': float(np.percentile(ar, 10)), 'area_p90': float(np.percentile(ar, 90)),
+                 'cent': cent.tolist(), 'area': ar.tolist()}
+    for (x, y), k in zip(cent, keep):
+        d.ellipse([x - 2, y - 2, x + 2, y + 2], fill=(0, 0, 0))
+    d.polygon(poly, outline=(255, 255, 255))
+vis.save(OUT)
+json.dump(res, open(OUT + '.json', 'w'))
+print({k: (v['n'], round(v['area_median'])) for k, v in res.items()})

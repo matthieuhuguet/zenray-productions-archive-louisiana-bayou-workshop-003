@@ -1,0 +1,33 @@
+{
+  "component": "Entrance_Arch",
+  "active_version": "v001",
+  "versions": [
+    {
+      "version": "v001",
+      "label": "arche-entree-avec-croix",
+      "dir_name": "v001_arche-entree-avec-croix",
+      "timestamp": "2026-09-19 17:40:40",
+      "saved_at_iso": "2026-09-19T17:40:40+02:00",
+      "kind": "object",
+      "node_path": "/obj/Entrance_Arch",
+      "hip_file": "graph.hiplc",
+      "proof_geo": {
+        "points": 3636,
+        "prims": 2928,
+        "bbox": [
+          [
+            -1.082200050354004,
+            0.0,
+            -0.09635999798774719
+          ],
+          [
+            1.082200050354004,
+            3.632499933242798,
+            0.11400000005960464
+          ]
+        ]
+      },
+      "children_count": 4
+    }
+  ]
+}

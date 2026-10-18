@@ -1,0 +1,71 @@
+# 9 October 2026 : open the church front wall completely behind the porch door. EN: the clapboard rows are single slanted quads ; the Boolean left every row above y = 1.98 untouched (rows at y 1.98 to 2.98 still spanned the whole wall, so the porch looked closed). This SOP splits every row whose vertical centre lies inside the door height into a left and a right quad around the door width, keeping all its attributes. Parameters come from Component_PorchVestibule (door_width, door_height, offset_x, landing_y) plus DOOR_MARGIN. FR : on coupe chaque rangée de clin dont le centre est dans la hauteur de la porte en deux quads, gauche et droite de la porte.
+import hou
+geo = hou.pwd().geometry()
+vest = hou.node(hou.pwd().parent().path() + '/Component_PorchVestibule')
+dw = vest.parm('door_width').eval(); dh = vest.parm('door_height').eval(); ox = vest.parm('offset_x').eval(); ly = vest.parm('landing_y').eval()
+Z_MIN = hou.pwd().parent().parm('length').eval() * 0.5 - 0.35         # only the front wall rows, not the rear gable
+XL, XR = ox - dw * 0.5, ox + dw * 0.5; Y0, Y1 = ly, ly + vest.parm('wall_height').eval()   # 9 October 2026 : open up to the TOP of the transom so the small panes show from inside. FR : ouverture jusqu'en haut de l'imposte.
+point_attribs = [a for a in geo.pointAttribs() if a.name() != 'P']
+prim_attribs = list(geo.primAttribs())
+kills = []; made = 0
+# ---- step 1, HEAL : the facade generator carries its own old door gap (x -0.72 to -0.04), so rows below and around the door were missing. Every front wall row (same plank_row) is rebuilt as ONE full width quad, then step 2 cuts the real door. FR : on recolle chaque rangée en un seul quad pleine largeur, puis on coupe la vraie porte.
+if geo.findPrimAttrib('plank_row') is not None:
+    rows = {}
+    for pr in geo.prims():
+        vs_ = list(pr.vertices())
+        if len(vs_) != 4: continue
+        zs_ = [v.point().position()[2] for v in vs_]
+        if min(zs_) < Z_MIN: continue
+        rows.setdefault(pr.attribValue('plank_row'), []).append(pr)
+    for key, prs in rows.items():
+        xs_all = [v.point().position()[0] for pr in prs for v in pr.vertices()]
+        X0, X1 = min(xs_all), max(xs_all)
+        covered = sum(max(v.point().position()[0] for v in pr.vertices()) - min(v.point().position()[0] for v in pr.vertices()) for pr in prs)
+        if len(prs) == 1: continue          # 9 October 2026 : any row made of several pieces is merged, even when it is fully covered : the odd piece under the door was shorter than its neighbours and left a slit. FR : une rangée en plusieurs pièces est toujours fusionnée.
+        base = max(prs, key=lambda q: (max(v.point().position()[1] for v in q.vertices()) - min(v.point().position()[1] for v in q.vertices()), -min(v.point().position()[0] for v in q.vertices())))
+        bv = list(base.vertices()); bx = [v.point().position()[0] for v in bv]; b0, b1 = min(bx), max(bx)
+        newp = []
+        for v in bv:
+            p = v.point().position(); q = geo.createPoint()
+            q.setPosition(hou.Vector3(X0 if p[0] <= b0 + 1e-6 else X1, p[1], p[2]))
+            for at in point_attribs:
+                try: q.setAttribValue(at, v.point().attribValue(at))
+                except Exception: pass
+            newp.append(q)
+        npr = geo.createPolygon()
+        for q in newp: npr.addVertex(q)
+        for at in prim_attribs:
+            try: npr.setAttribValue(at, base.attribValue(at))
+            except Exception: pass
+        for pr in prs: kills.append(pr)
+    geo.deletePrims(kills, True); kills = []
+for pr in list(geo.prims()):
+    vs = list(pr.vertices())
+    if len(vs) != 4: continue
+    P = [v.point().position() for v in vs]
+    zs = [p[2] for p in P]; ys = [p[1] for p in P]; xs = [p[0] for p in P]
+    if min(zs) < Z_MIN: continue
+    yc = 0.5 * (min(ys) + max(ys))
+    if not (Y0 - 0.005 <= yc <= Y1 + 0.005): continue
+    if max(xs) <= XL or min(xs) >= XR: continue
+    x0, x1 = min(xs), max(xs)
+    pieces = []
+    if x0 < XL - 1e-4: pieces.append((x0, XL))
+    if x1 > XR + 1e-4: pieces.append((XR, x1))
+    for a, b in pieces:
+        new_pts = []
+        for v, p in zip(vs, P):
+            q = geo.createPoint(); t = (p[0] - x0) / max(x1 - x0, 1e-9)
+            q.setPosition(hou.Vector3(a + (b - a) * (0.0 if p[0] <= x0 + 1e-6 else 1.0), p[1], p[2]))
+            for at in point_attribs:
+                try: q.setAttribValue(at, v.point().attribValue(at))
+                except Exception: pass
+            new_pts.append(q)
+        np_ = geo.createPolygon()
+        for q in new_pts: np_.addVertex(q)
+        for at in prim_attribs:
+            try: np_.setAttribValue(at, pr.attribValue(at))
+            except Exception: pass
+        made += 1
+    kills.append(pr)
+geo.deletePrims(kills, True)

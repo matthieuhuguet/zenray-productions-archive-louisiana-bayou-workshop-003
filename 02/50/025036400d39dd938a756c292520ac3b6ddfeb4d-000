@@ -1,0 +1,77 @@
+# 9 October 2026 : window wood UV, ONE density, random placement. EN: every window wood face uses the same density D (uv per metre) so grain and peeling have the same size everywhere. Shutter slats : the front of a slat takes a random crop of one of the 4 louvers (random louver, random start along u) at density S = louver height / slat width, thin edges and ends continue the same crop ; frames, sashes, rails and stiles : each face goes to a random position inside the plank band of its group (frame = plank 1, sash = plank 2, rails = plank 1 or 2), long side along u, so the first two bands are used over their whole area and no two neighbours look alike. FR : une seule densité, placement aléatoire, les deux premières bandes de planche utilisées à fond, persiennes seulement sur les 4 louvres.
+import hou, math, random
+import numpy as np
+geo = hou.pwd().geometry()
+SEAMS = [0.0, 0.111, 0.212, 0.313, 0.421]; MARG = 0.012; LU0, LU1 = 0.03, 0.97
+BAND = {'frame': (0.825, 0.990), 'sash': (0.675, 0.805)}; PLANK12 = [(0.825, 0.990), (0.675, 0.805)]
+PADV = 0.004
+if geo.findVertexAttrib('uv') is None: geo.addAttrib(hou.attribType.Vertex, 'uv', (0.0, 0.0, 0.0))
+def unit(x): return x / max(np.linalg.norm(x), 1e-12)
+def seeded(*k): return random.Random(hash(k) & 0xFFFFFFFF)
+def face_pts(pr): return np.array([v.point().position() for v in pr.vertices()], float)
+def key_of(P): c = P.mean(axis=0); return (int(round(c[0] * 100)), int(round(c[1] * 100)), int(round(c[2] * 100)))
+def long_frame(P, n):
+    lens = [np.linalg.norm(P[(i + 1) % len(P)] - P[i]) for i in range(len(P))]; i0 = int(np.argmax(lens)); eu = unit(P[(i0 + 1) % len(P)] - P[i0]); ev = unit(np.cross(n, eu)); return eu, ev
+# ---------- 1. shutter slats : one board = one PCA frame -----------------------------------------
+sel = [pr for pr in geo.prims() if pr.attribValue('grp') in ('slat_L', 'slat_R', 'rail')]
+parent = {}
+def find(a):
+    while parent.setdefault(a, a) != a:
+        parent[a] = parent[parent[a]]; a = parent[a]
+    return a
+for pr in sel:
+    pts = [v.point().number() for v in pr.vertices()]
+    for q in pts[1:]: parent[find(q)] = find(pts[0])
+pieces = {}
+for pr in sel: pieces.setdefault((pr.attribValue('grp'), find(pr.vertices()[0].point().number())), []).append(pr)
+def frame_axes(prs):
+    P = np.array([v.point().position() for pr in prs for v in pr.vertices()], float); c = P.mean(axis=0)
+    w, V = np.linalg.eigh(np.cov((P - c).T) + 1e-14 * np.eye(3)); L, W, T = V[:, 2], V[:, 1], V[:, 0]
+    if W[1] < 0: W = -W
+    return P, c, L, W, T
+slat_pieces = []; rail_pieces = []
+for (gname, key), prs in pieces.items():
+    P, c, L, W, T = frame_axes(prs); (rail_pieces if gname == 'rail' else slat_pieces).append((key, prs, P, c, L, W, T))
+mean_w = float(np.mean([np.ptp(p[2] @ p[5]) for p in slat_pieces])) if slat_pieces else 0.085
+S = (SEAMS[1] - SEAMS[0] - 2 * MARG) / max(mean_w, 1e-6)            # louver height / slat width : same density on the whole slat
+for key, prs, P, c, L, W, T in slat_pieces:
+    rnd = seeded('slat', int(round(c[0] * 1000)), int(round(c[1] * 1000)), int(round(c[2] * 1000)))
+    k = rnd.randrange(4); va, vb = SEAMS[k] + MARG, SEAMS[k + 1] - MARG; vm = (va + vb) / 2
+    a = P @ L; b = P @ W; t = P @ T; Sp = min(S, (LU1 - LU0) / max(np.ptp(a), 1e-6)); span = np.ptp(a) * Sp; us = LU0 + rnd.random() * max(0.0, (LU1 - LU0) - span)
+    for pr in prs:
+        n = np.array(pr.normal()); kind = int(np.argmax([abs(float(n @ L)), abs(float(n @ W)), abs(float(n @ T))]))
+        for v in pr.vertices():
+            p = np.array(v.point().position()); ua = us + (p @ L - a.min()) * Sp; wa = (p @ W - b.min()) * Sp; ta = (p @ T - t.min()) * Sp
+            if kind == 2: uv = (ua, va + wa)                                                              # front or back : crop of the louver
+            elif kind == 1: uv = (ua, vm + 0.010 + ta) if float(n @ W) > 0 else (ua, vm - 0.010 - (np.ptp(t) * Sp - ta))   # top and bottom edges : wood body next to the crop
+            else: uv = (max(0.005, us - 0.03) + ta, va + wa)                                              # ends : wood just before the crop
+            v.setAttribValue('uv', (float(uv[0]), float(min(max(uv[1], 0.0), 0.42)), 0.0))
+# ---------- 2. frames, sashes, shutter rails : random place in the plank band ---------------------
+isl = []
+for pr in geo.prims():
+    g = pr.attribValue('grp')
+    if g not in ('frame', 'sash') and g != 'rail': continue
+    P = face_pts(pr); n = np.array(pr.normal())
+    if np.linalg.norm(n) < 1e-9: continue
+    eu, ev = long_frame(P, n); a = P @ eu; b = P @ ev; isl.append((pr, g, a, b, np.ptp(a), np.ptp(b)))
+bandh = {g: BAND[g][1] - BAND[g][0] for g in BAND}
+D = min((LU1 - 0.012) / max(w, 1e-6) for pr, g, a, b, w, h in isl)      # one density from the longest face; a few tall faces are scaled down alone
+D0 = D
+for pr, g, a, b, w, h in isl:
+    bh = bandh['frame'] if g == 'rail' else bandh[g]
+    D = min(D0, (bh - 2 * PADV) / max(h, 1e-6))
+    rnd = seeded('isl', g, key_of(face_pts(pr)))
+    lo, hi = PLANK12[0] if g == 'rail' else BAND[g]          # 9 October 2026 (Matthieu) : islands are glued to the BOTTOM LEFT corner of their band, always. FR : les îlots sont collés au coin bas gauche de leur bande, toujours.
+    us = 0.012; vs = lo + PADV
+    for v, ai, bi in zip(pr.vertices(), a, b): v.setAttribValue('uv', (float(us + (ai - a.min()) * D), float(vs + (bi - b.min()) * D), 0.0))
+geo.addAttrib(hou.attribType.Global, 'window_density', 0.0) if geo.findGlobalAttrib('window_density') is None else None
+geo.setGlobalAttribValue('window_density', float(D0))
+# ---------- 3. vestibule transom panes : glass slabs with no group ---------------------------------
+for pr in geo.prims():
+    if pr.attribValue('material_id') != 'M_WindowWood_04' or pr.attribValue('grp') != '': continue
+    if geo.findPrimAttrib('stair_part') is not None and pr.attribValue('stair_part') != '': continue
+    pr.setAttribValue('grp', 'glass')
+# glass is another material (no texture) : park its uv, it must never sit on the wood sheet. FR : le verre est un autre matériau, ses UV ne restent pas sur la feuille de bois.
+for pr in geo.prims():
+    if pr.attribValue('grp') == 'glass':
+        for v in pr.vertices(): v.setAttribValue('uv', (0.0, 0.0, 0.0))

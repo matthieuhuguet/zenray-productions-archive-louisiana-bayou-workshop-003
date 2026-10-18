@@ -1,0 +1,33 @@
+{
+  "component": "Terrain",
+  "active_version": "v001",
+  "versions": [
+    {
+      "version": "v001",
+      "label": "terrain-recupere-du-chantier-wavy",
+      "dir_name": "v001_terrain-recupere-du-chantier-wavy",
+      "timestamp": "2026-09-19 17:39:49",
+      "saved_at_iso": "2026-09-19T17:39:49+02:00",
+      "kind": "object",
+      "node_path": "/obj/Terrain",
+      "hip_file": "graph.hiplc",
+      "proof_geo": {
+        "points": 75625,
+        "prims": 75076,
+        "bbox": [
+          [
+            -54.79999923706055,
+            -1.2049654722213745,
+            -54.79999923706055
+          ],
+          [
+            54.79999923706055,
+            18.485097885131836,
+            54.79999923706055
+          ]
+        ]
+      },
+      "children_count": 17
+    }
+  ]
+}

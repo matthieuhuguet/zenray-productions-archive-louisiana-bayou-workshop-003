@@ -1,0 +1,71 @@
+{
+  "component": "Cop_M_RoofTiles_HERMES_01",
+  "active_version": "v005",
+  "versions": [
+    {
+      "version": "v001",
+      "label": "height-wip-c23",
+      "dir_name": "v001_height-wip-c23",
+      "timestamp": "2026-09-19 02:05:16",
+      "kind": "copnet",
+      "node_path": "/obj/Cop_M_RoofTiles_HERMES_01",
+      "final_node": "peak_soft",
+      "proof_res": 1024,
+      "hip_file": "graph.hiplc",
+      "proof_file": "proof.png",
+      "children_count": 43
+    },
+    {
+      "version": "v002",
+      "label": "height-calee-sur-ref-score-6-7",
+      "dir_name": "v002_height-calee-sur-ref-score-6-7",
+      "timestamp": "2026-09-19 14:45:30",
+      "kind": "copnet",
+      "node_path": "/obj/Cop_M_RoofTiles_HERMES_01",
+      "final_node": "/obj/Cop_M_RoofTiles_HERMES_01/peak_soft",
+      "proof_res": 1024,
+      "hip_file": "graph.hiplc",
+      "proof_file": "proof.png",
+      "children_count": 47
+    },
+    {
+      "version": "v003",
+      "label": "tuiles-trapeze-decalage-colonne-eclats-mousse",
+      "dir_name": "v003_tuiles-trapeze-decalage-colonne-eclats-mousse",
+      "timestamp": "2026-09-19 15:05:48",
+      "kind": "copnet",
+      "node_path": "/obj/Cop_M_RoofTiles_HERMES_01",
+      "final_node": "/obj/Cop_M_RoofTiles_HERMES_01/straighten",
+      "proof_res": 1024,
+      "hip_file": "graph.hiplc",
+      "proof_file": "proof.png",
+      "children_count": 69
+    },
+    {
+      "version": "v004",
+      "label": "orientation-native-voronoi-lit-beton",
+      "dir_name": "v004_orientation-native-voronoi-lit-beton",
+      "timestamp": "2026-09-19 15:36:27",
+      "kind": "copnet",
+      "node_path": "/obj/Cop_M_RoofTiles_HERMES_01",
+      "final_node": "/obj/Cop_M_RoofTiles_HERMES_01/peak_soft",
+      "proof_res": 1024,
+      "hip_file": "graph.hiplc",
+      "proof_file": "proof.png",
+      "children_count": 70
+    },
+    {
+      "version": "v005",
+      "label": "lit-beton-droit-cannelures-et-normal-ao",
+      "dir_name": "v005_lit-beton-droit-cannelures-et-normal-ao",
+      "timestamp": "2026-09-19 15:41:36",
+      "kind": "copnet",
+      "node_path": "/obj/Cop_M_RoofTiles_HERMES_01",
+      "final_node": "/obj/Cop_M_RoofTiles_HERMES_01/peak_soft",
+      "proof_res": 1024,
+      "hip_file": "graph.hiplc",
+      "proof_file": "proof.png",
+      "children_count": 81
+    }
+  ]
+}

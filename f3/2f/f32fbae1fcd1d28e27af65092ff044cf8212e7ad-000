@@ -1,0 +1,42 @@
+# 9 October 2026 : chain the tiles of the reference roof into ROWS (links to the right neighbour along the local eave direction) and print the exact layout.
+# EN: eave direction is interpolated between the eave line and the ridge line, so the chain follows the perspective; every tile has at most one right and one left neighbour.
+# FR : chaînage des tuiles en rangées exactes, direction d'égout interpolée entre l'égout et le faîtage.
+import sys, json
+import numpy as np
+data = json.load(open(sys.argv[1]))
+CFG = {'church': dict(eave=((50,745),(655,676)), ridge=((285,497),(890,362)), up=((50,745),(285,497))),
+       'porch':  dict(eave=((735,740),(925,722)), ridge=((862,600),(1042,572)), up=((735,740),(862,600)))}
+res = {}
+for name, cfg in CFG.items():
+    c = np.array(data[name]['cent']); ar = np.array(data[name]['area']); n = len(c)
+    (e0, e1), (r0, r1) = cfg['eave'], cfg['ridge']
+    ang_e = np.arctan2(e1[1]-e0[1], e1[0]-e0[0]); ang_r = np.arctan2(r1[1]-r0[1], r1[0]-r0[0])
+    # fraction up the slope from the distance to the eave line vs ridge line
+    def dist(p, a, b):
+        a = np.array(a, float); b = np.array(b, float); d = b - a; return np.cross(d, p - a) / np.linalg.norm(d)
+    de = np.array([abs(dist(p, e0, e1)) for p in c]); dr = np.array([abs(dist(p, r0, r1)) for p in c])
+    f = de / (de + dr + 1e-9)
+    ang = ang_e + (ang_r - ang_e) * f
+    d = np.c_[np.cos(ang), np.sin(ang)]
+    # tile pitch along the row = median distance to nearest neighbour roughly along d
+    right = [-1] * n
+    pitch = np.sqrt(np.median(ar)) * 1.2
+    for i in range(n):
+        best = None
+        for j in range(n):
+            if i == j: continue
+            dl = c[j] - c[i]; al = dl @ d[i]; pr = abs(dl[0]*d[i][1] - dl[1]*d[i][0])
+            if 0.45 * pitch < al < 2.3 * pitch and pr < 0.42 * pitch:
+                if best is None or al < best[0]: best = (al, j)
+        if best: right[i] = best[1]
+    has_left = set(j for j in right if j >= 0)
+    starts = [i for i in range(n) if i not in has_left]
+    rows = []
+    for s in starts:
+        chain = [s]
+        while right[chain[-1]] >= 0 and len(chain) < 200: chain.append(right[chain[-1]])
+        rows.append(chain)
+    rows.sort(key=lambda ch: -np.mean([c[k][1] for k in ch]))   # bottom row first (largest y)
+    res[name] = {'rows': [[int(k) for k in ch] for ch in rows], 'pitch': float(pitch)}
+    print(name, 'tiles', n, 'chains', len(rows), 'lengths', [len(ch) for ch in rows])
+json.dump(res, open(sys.argv[1] + '.rows.json', 'w'))

@@ -1,0 +1,57 @@
+{
+  "component": "Fence",
+  "version": "v001",
+  "label": "cloture-quatre-courses",
+  "timestamp": "2026-09-19 17:40:30",
+  "saved_at_iso": "2026-09-19T17:40:30+02:00",
+  "src_hip": "/Users/zenray/Create/Build/Productions/ZenRayHoudini/LouisianaBayou/LouisianaBayou.hiplc",
+  "node_path": "/obj/Fence",
+  "children": [
+    {
+      "name": "run_west",
+      "type": "zenray_picket_fence"
+    },
+    {
+      "name": "run_east",
+      "type": "zenray_picket_fence"
+    },
+    {
+      "name": "run_west_return",
+      "type": "zenray_picket_fence"
+    },
+    {
+      "name": "run_east_return",
+      "type": "zenray_picket_fence"
+    },
+    {
+      "name": "assemble",
+      "type": "merge"
+    },
+    {
+      "name": "tone",
+      "type": "color"
+    },
+    {
+      "name": "OUT_fence",
+      "type": "null"
+    }
+  ],
+  "external_inputs": [],
+  "hip_file": "graph.hiplc",
+  "proof_geo": {
+    "points": 6800,
+    "prims": 6784,
+    "bbox": [
+      [
+        -10.3982515335083,
+        -0.13280220329761505,
+        -2.0455353260040283
+      ],
+      [
+        9.638429641723633,
+        0.6913634538650513,
+        11.045782089233398
+      ]
+    ]
+  }
+}

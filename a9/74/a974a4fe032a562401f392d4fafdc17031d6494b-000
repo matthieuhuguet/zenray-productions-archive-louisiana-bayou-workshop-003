@@ -1,0 +1,101 @@
+# 9 October 2026 : sheets for the 36-slot roof trim sheet. EN: (1) UV sheet = base colour with the 36 slot rectangles coloured and numbered, (2) colour index texture = flat random colour per slot, (3) double view = coloured model | UV islands on the sheet, (4) model sheet = 4 views of the church with the roof coloured by slot + legend. FR : fiche UV, texture d'index couleur, double vue maillage et UV, planche du modele.
+import sys, json, math, os, colorsys
+import numpy as np
+from PIL import Image, ImageDraw, ImageFont
+faces_path, slots_path, base_path, outdir = sys.argv[1:5]
+os.makedirs(outdir, exist_ok=True)
+faces = json.load(open(faces_path)); slots = json.load(open(slots_path))['slots']
+F = lambda s: ImageFont.truetype('/Users/zenray/Library/Fonts/AnthropicSans-Regular.ttf', s)
+SER = lambda s: ImageFont.truetype('/Users/zenray/Library/Fonts/AnthropicSerif-Regular.ttf', s)
+colour = {}
+for f in faces:
+    if f['roof']: colour[f['slot']] = tuple(f['Cd'])
+count = {}
+for f in faces:
+    if f['roof']: count[f['slot']] = count.get(f['slot'], 0) + 1
+tiles_per_slot = {k: round(v / 6) for k, v in count.items()}        # 6 faces per shingle
+rgb = lambda c: tuple(int(255 * q) for q in c)
+base = Image.open(base_path).convert('RGB')
+# (1) UV sheet and (2) colour index
+def sheet(size, overlay):
+    im = base.resize((size, size)) if overlay else Image.new('RGB', (size, size), (20, 20, 22))
+    d = ImageDraw.Draw(im, 'RGBA')
+    for s in slots:
+        u0, u1, v0, v1 = s['uv']; x0, x1, y0, y1 = u0 * size, u1 * size, (1 - v1) * size, (1 - v0) * size
+        c = rgb(colour[s['id']])
+        d.rectangle((x0, y0, x1, y1), fill=c + ((110 if overlay else 255),), outline=c + (255,), width=4 if overlay else 1)
+        d.text(((x0 + x1) / 2, (y0 + y1) / 2), str(s['id']), fill=(255, 255, 255, 255), font=SER(int(size * 0.05)), anchor='mm', stroke_width=3, stroke_fill=(0, 0, 0, 200))
+    return im
+sheet(2048, True).save(os.path.join(outdir, 'RoofTrimSheet36_UVSheet_Overlay_9October2026.png'))
+sheet(1254, False).save(os.path.join(outdir, 'RoofTrimSheet36_ColourIndex_9October2026.png'))
+# geometry views
+P_all = np.array([p for f in faces for p in f['P']]); C = P_all.mean(0)
+def render(yaw_deg, pit_deg, W, H, margin=0.9, crop=None):
+    # z-buffer rasteriser (nearest polygon wins, no painter artefacts), tile borders from an id buffer
+    yaw, pit = math.radians(yaw_deg), math.radians(pit_deg)
+    Ry = np.array([[math.cos(yaw), 0, math.sin(yaw)], [0, 1, 0], [-math.sin(yaw), 0, math.cos(yaw)]])
+    Rx = np.array([[1, 0, 0], [0, math.cos(pit), -math.sin(pit)], [0, math.sin(pit), math.cos(pit)]])
+    R = Ry @ Rx
+    pts = (P_all - C) @ R; ext_x = np.abs(pts[:, 0]).max(); ext_y = np.abs(pts[:, 1]).max()
+    s = min(W * 0.5 * margin / ext_x, H * 0.5 * margin / ext_y)
+    img = np.full((H, W, 3), (28, 28, 30), np.uint8); zbuf = np.full((H, W), -1e9); idb = np.full((H, W), -1, np.int32)
+    light = np.array([-0.35, 0.55, 0.75]); light /= np.linalg.norm(light)
+    for fi, f in enumerate(faces):
+        P = (np.array(f['P']) - C) @ R
+        if len(P) < 3: continue
+        n = np.cross(P[1] - P[0], P[2] - P[0]); nn = np.linalg.norm(n)
+        if nn < 1e-12: continue
+        shade = 0.45 + 0.55 * abs(float(n @ light) / nn)
+        col = np.array(f['Cd'] if f['roof'] else (0.76, 0.75, 0.72)); rgbv = np.clip(col * shade * 255, 0, 255).astype(np.uint8)
+        X = W / 2 + P[:, 0] * s; Y = H / 2 - P[:, 1] * s; Z = P[:, 2]
+        for k in range(1, len(P) - 1):
+            x0, x1, x2 = X[0], X[k], X[k + 1]; y0, y1, y2 = Y[0], Y[k], Y[k + 1]
+            xa, xb = int(max(min(x0, x1, x2), 0)), int(min(max(x0, x1, x2) + 1, W - 1)); ya, yb = int(max(min(y0, y1, y2), 0)), int(min(max(y0, y1, y2) + 1, H - 1))
+            if xa > xb or ya > yb: continue
+            den = (y1 - y2) * (x0 - x2) + (x2 - x1) * (y0 - y2)
+            if abs(den) < 1e-9: continue
+            gx, gy = np.meshgrid(np.arange(xa, xb + 1) + 0.5, np.arange(ya, yb + 1) + 0.5)
+            w0 = ((y1 - y2) * (gx - x2) + (x2 - x1) * (gy - y2)) / den; w1 = ((y2 - y0) * (gx - x2) + (x0 - x2) * (gy - y2)) / den; w2 = 1 - w0 - w1
+            inside = (w0 >= -1e-6) & (w1 >= -1e-6) & (w2 >= -1e-6)
+            if not inside.any(): continue
+            z = w0 * Z[0] + w1 * Z[k] + w2 * Z[k + 1]
+            sub = zbuf[ya:yb + 1, xa:xb + 1]; upd = inside & (z > sub)
+            sub[upd] = z[upd]; img[ya:yb + 1, xa:xb + 1][upd] = rgbv; idb[ya:yb + 1, xa:xb + 1][upd] = fi if f['roof'] else -2
+    edge = np.zeros((H, W), bool)
+    edge[:, 1:] |= (idb[:, 1:] != idb[:, :-1]) & (idb[:, 1:] >= 0)
+    edge[1:, :] |= (idb[1:, :] != idb[:-1, :]) & (idb[1:, :] >= 0)
+    img[edge] = (img[edge] * 0.45).astype(np.uint8)
+    return Image.fromarray(img)
+# (3) double view : mesh side view | UV islands over the sheet
+def double(name, yaw, pit, label):
+    PX = 1000
+    left = render(yaw, pit, PX, PX); ImageDraw.Draw(left).text((16, 12), label, fill=(235, 235, 235), font=F(28))
+    bg = Image.blend(base.resize((PX, PX)), Image.new('RGB', (PX, PX), (20, 20, 22)), 0.5).convert('RGBA')
+    ov = Image.new('RGBA', (PX, PX), (0, 0, 0, 0)); od = ImageDraw.Draw(ov)
+    for f in faces:
+        if not f['roof'] or len(f['uv']) < 3: continue
+        pts = [(u * PX, (1 - v) * PX) for u, v in f['uv']]
+        c = rgb(f['Cd']); od.polygon(pts, fill=c + (26,), outline=c + (70,))
+    right = Image.alpha_composite(bg, ov).convert('RGB'); dr = ImageDraw.Draw(right)
+    for s in slots:
+        u0, u1, v0, v1 = s['uv']; dr.rectangle((u0 * PX, (1 - v1) * PX, u1 * PX, (1 - v0) * PX), outline=(255, 255, 255), width=2)
+        dr.text((u0 * PX + 6, (1 - v1) * PX + 2), str(s['id']), fill=(255, 255, 255), font=F(20))
+    dr.text((16, 12), 'UV 0-1 on the trim sheet : 36 slots, islands in the colour of their slot', fill=(235, 235, 235), font=F(26))
+    out = Image.new('RGB', (2 * PX, PX)); out.paste(left, (0, 0)); out.paste(right, (PX, 0)); out.save(os.path.join(outdir, name))
+double('RoofTrimSheet36_DoubleView_Side_9October2026.png', -90, 0, 'Church, side view (roof coloured by slot)')
+double('RoofTrimSheet36_DoubleView_3Quarter_9October2026.png', -32, -22, 'Church, 3/4 view (roof coloured by slot)')
+# (4) model sheet : 4 views + legend
+VW, VH = 1000, 760
+views = [('Front', 0, 0), ('Side', -90, 0), ('Top', 0, 90), ('3/4', -32, -22)]
+LEG_H = 330
+sheetm = Image.new('RGB', (2 * VW, 2 * VH + LEG_H), (28, 28, 30)); dm = ImageDraw.Draw(sheetm)
+for i, (nm, yw, pt) in enumerate(views):
+    im = render(yw, pt, VW, VH); ImageDraw.Draw(im).text((16, 10), nm, fill=(235, 235, 235), font=F(30)); sheetm.paste(im, ((i % 2) * VW, (i // 2) * VH))
+y0 = 2 * VH + 18; dm.text((20, y0), 'Roof tiles coloured by trim sheet slot (number = slot, tiles = count)', fill=(235, 235, 235), font=F(26))
+for k in range(36):
+    r, c = divmod(k, 12); x = 20 + c * 164; y = y0 + 44 + r * 84
+    dm.rounded_rectangle((x, y, x + 150, y + 70), 10, fill=rgb(colour[k + 1]))
+    dm.text((x + 12, y + 8), str(k + 1), fill=(255, 255, 255), font=SER(34), stroke_width=2, stroke_fill=(0, 0, 0))
+    dm.text((x + 12, y + 46), '%d tiles' % tiles_per_slot.get(k + 1, 0), fill=(255, 255, 255), font=F(18), stroke_width=1, stroke_fill=(0, 0, 0))
+sheetm.save(os.path.join(outdir, 'RoofTrimSheet36_ModelSheet_9October2026.png'))
+print('done', outdir)
